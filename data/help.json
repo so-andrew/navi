@@ -1,0 +1,98 @@
+{
+    "clean":{
+        "name": "clean",
+        "desc": "Deletes previous messages.",
+        "params": "`Integer` (required)",
+        "exinput": "`!clean 5`",
+        "exoutput": "Deleted `5 messages`. <:dab:310668328794587138>",
+        "type": "function"
+    },
+    "m":{
+        "name": "m",
+        "desc": "The base command for image macros. Returns the specified image from the database, if it exists. See `!help m create`, `!help m search`, `!help m delete`, `!help m list`, `!help m edit`, and `!help m info` for other commands related to the macro feature.",
+        "params": "`[name]` (required)",
+        "type": "macro"
+    },
+    "m create":{
+        "name": "m create",
+        "desc": "Allows the user to add their own macros to the database.",
+        "params": "`[name] [url]` (required)",
+        "exinput": "`!m create megumin https://megumin.love/images/bg.jpg`",
+        "exoutput": "Macro `megumin` created.",
+        "type": "function"
+    },
+    "m search": {
+        "name": "m search",
+        "desc": "Searches the database for macros that match the given parameters. Provides a list of possible matches if more than one macro fits the search criteria.",
+        "params": "`[search term]` (required)",
+        "exinput": "`!m search or`",
+        "exoutput": "You may be looking for: `digiorno`, `dishonorable`, `honorablemadlung`. (returns embed)",
+        "type": "function"
+    },
+    "m delete": {
+        "name": "m delete",
+        "desc": "Allows the user to delete macros that they have created. Attempting to delete macros created by another user will result in failure.",
+        "params": "`[name]` (required)",
+        "exinput": "`!m delete dogma`",
+        "exoutput": "Macro `dogma` deleted.",
+        "type":  "function"
+    },
+    "m list": {
+        "name": "m list",
+        "desc": "Returns a list of all current macros in the database.",
+        "params": "None",
+        "type": "macro"
+    },
+    "m edit": {
+        "name": "m edit",
+        "desc": "Allows the user to edit macros that they have created. Currently the command supports changing either the name or the contents of the macro, depending on the parameters given. (Beta feature)",
+        "params": "`[Current name] [New name or url]` (required)",
+        "exinput": "`!m edit megumin https://cdn.awwni.me/vqsy.jpg`",
+        "exoutput": "Macro `megumin` contents changed to `https://cdn.awwni.me/vqsy.jpg`.",
+        "type": "function"
+    },
+    "m info":{
+        "name": "m info",
+        "desc": "Provides information on the creator and number of uses of a specified macro.",
+        "params": "`[name]` (required)",
+        "type": "macro"
+    },
+    "avatar":{
+        "name": "avatar",
+        "desc": "Returns the avatar of the mentioned user, or if no one is mentioned, returns the avatar of the invoking user.",
+        "params": "`@mention` (optional)",
+        "type": "macro"
+    },
+    "addtwitch":{
+        "name": "addtwitch",
+        "desc": "Adds a Twitch streamer to the tracker, allowing for notifications whenever he/she streams.",
+        "params": "`[username / URL]` (required)",
+        "type": "macro"
+    },
+    "removetwitch":{
+        "name": "removetwitch",
+        "desc": "Removes a streamer from the tracker, turning off stream notifications.",
+        "params": "`[username]` (required)",
+        "type": "macro"
+    },
+    "coinflip":{
+        "name": "coinflip",
+        "desc": "Flips a coin. Can also be invoked with `!flip` and `!coin`.",
+        "params": "`[number]` (optional)",
+        "type": "macro"
+    },
+    "choose":{
+        "name": "choose",
+        "desc": "Chooses from a given list of options.",
+        "params": "`[choice 1] | [choice 2] | ... | [choice n] (n > 1)`",
+        "exinput": "`!choose The Legend of Zelda | Metroid | Super Mario`",
+        "exoutput": "Real niggas choose `The Legend of Zelda`.",
+        "type": "function"
+    },
+    "config":{
+        "name": "config",
+        "desc": "Initializes the per-guild settings for Hussein Bot, including the default Twitch notification channel and the prefix.",
+        "params": "User must have \"Manage Server\" permission.",
+        "type":  "macro"
+    }
+}
