@@ -6,7 +6,7 @@ module.exports = class AvatarCommand extends Command {
         super(client, {
             name: 'avatar',
             description: "Returns the avatar of the mentioned user, or if no one is mentioned, returns the avatar of the invoking user.",
-            group: 'util',
+            group: 'utility',
             memberName: 'avatar'
         })
     }
@@ -15,6 +15,8 @@ module.exports = class AvatarCommand extends Command {
     //params: "`@mention` (optional)",
     //cooldown: 3,
     
+    // TODO: Rewrite using Commando args 
+
     run(message, args){
         console.log(`Command ${module.exports.name} received from ${message.author.username}`);
         const embed = new MessageEmbed();

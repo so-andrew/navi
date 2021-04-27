@@ -8,30 +8,25 @@ module.exports = class CoinflipCommand extends Command {
             name: 'coinflip',
             aliases: ['flip', 'coin'],
             description: "Flips a coin.",
-            group: 'util',
-            memberName: ' coinflip',
+            group: 'utility',
+            memberName: 'coinflip',
+            examples: ["`!coinflip 10`"],
+            format: "`!coinflip <number>` (optional; 0 < number <= 100)",
             args: [
                 {
-                    key: 'num',
+                    key: 'number',
                     prompt: 'How many coins to flip?',
                     type: 'integer',
                     default: 1,
-                    validate: num => num > 0 && num <= 100,
+                    validate: number => number > 0 && number <= 100,
                 },
             ],
         })
     }
-
-    //name: 'coinflip',
-    //aliases: ['flip', 'coin'],
-    //description: "Flips a coin.",
-    //params: "`[number]` (optional)",
-    //category: "utility",
-    //cooldown: 2,
     
-    async run(message, { num }){
+    async run(message, { number }){
         console.log(`Command ${module.exports.name} received from ${message.author.username}`);
-        coinflip(message, num);
+        coinflip(message, number);
     }
 
 }
@@ -56,14 +51,11 @@ async function coinflip(message, times){
         return message.embed(embed);
     }
     else{
-        //let outcomes = [];
         let headsCount = 0;
         for(i = 0; i < times; i++){
             if(Math.floor(Math.random()*2)+1 === 1){
                 headsCount++;
-                //outcomes.push("Heads");
             }
-            //else outcomes.push("Tails");
         }
         let outputString = "";
         const embed = new MessageEmbed()

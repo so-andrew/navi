@@ -8,74 +8,54 @@ module.exports = class HelpCommand extends Command {
         super(client, {
             name: 'help',
             description: "Help function",
-            group: 'util',
+            group: 'info',
             memberName: 'help',
             argsType: 'multiple',
+            args: [
+                {
+                    key: 'cmd',
+                    prompt: 'Which command do you want to know more about?',
+                    type: 'string',
+                    default: ""
+                }
+            ]
         })
     }
-    //name: 'help',
-    //description: "Help function",
 
     run(message, args) {
         console.log(`Command ${module.exports.name} received from ${message.author.username}`);
         if(!args || !args.length){
-            const commandsWithCategory = this.client.registry.commands.filter(command => command.category);
-            const commandCategories = new Discord.Collection();
-            const utilCommands = commandsWithCategory.filter(command => command.category === "utility");
-            commandCategories.set("Utility Commands", utilCommands);
-
+            const CommandoRegistry = this.client.registry;
+        
             const embed = new MessageEmbed()
-            
-        }
-    }
-
-    execute(message, args){
-        console.log(`Command ${module.exports.name} received from ${message.author.username}`);
-        if(!args || !args.length){
-            const commandsWithCategory = message.client.commands.filter(command => command.category);
-            const commandCategories = new Discord.Collection();
-            const funCommands = commandsWithCategory.filter(command => command.category === "fun");
-            commandCategories.set("Fun Commands", funCommands);
-            const utilityCommands = commandsWithCategory.filter(command => command.category === "utility");
-            commandCategories.set("Utility Commands", utilityCommands);
-            const modCommands = commandsWithCategory.filter(command => command.category === "mod");
-            commandCategories.set("Mod Commands", modCommands);
-            const noveltyCommands = commandsWithCategory.filter(command => command.category === "novelty");
-            commandCategories.set("Novelty Commands", noveltyCommands);
-            const macroCommands = commandsWithCategory.filter(command => command.category === "macros");
-            commandCategories.set("User Macro System", macroCommands);
-            const gamemodeCommands = commandsWithCategory.filter(command => command.category === "gamemode");
-            commandCategories.set("League Player Rotation", gamemodeCommands);
-            const twitchCommands = commandsWithCategory.filter(command => command.category === "twitch");
-            commandCategories.set("Twitch Notifications", twitchCommands);
-
-            const embed = new Discord.RichEmbed()
                 .setTitle("Commands")
                 .setColor(3447003)
                 .setDescription("An index of commands currently supported by NAVI.")
                 .setFooter("Type !help [command] for more info on a specific command.");
 
-            for(let [key, value] of commandCategories){
-                if(value.first() && value.first().subcommands && value.first().subcommands.length !== 0){
-                    const commandString = "\`" + value.first().subcommands.join("\`, \`") + "\`";
-                    embed.addField(key, commandString);
-                }
-                else{
-                    const keys = Array.from(value.keys());
-                    if(keys){
-                        const keyString = "\`" + keys.join("\`, \`") + "\`";
-                        embed.addField(key, keyString);
+                const commandGroups = CommandoRegistry.groups.values();
+                console.log(commandGroups);
+            
+            for(const group of commandGroups){
+                if(group.id !== 'util'){
+                    let keyString = "";
+                    for(let value of group.commands.values()){
+                        keyString += `\`${value.name}\`, `
                     }
+                    keyString = keyString.substring(0, keyString.length - 2)
+                    embed.addField(group.name, keyString);
                 }
-            }
-            message.channel.send({embed:embed});
+            }  
+            message.embed(embed);
         }
-        else help(message, args);
+        //else help(message, args);
     }
 }
 
 
-function help(message, args)
+function help(message, args){
+
+}
 
 function helpOld(message, args){
     if(args[0] === "m" || args[0] === "gamemode"){

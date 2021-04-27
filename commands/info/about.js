@@ -6,7 +6,7 @@ module.exports = class AboutCommand extends Command {
         super(client, {
             name: 'about',
             description: "About message for NAVI.",
-            group: 'util',
+            group: 'info',
             memberName: 'about'
         });
     }

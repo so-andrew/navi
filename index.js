@@ -5,6 +5,7 @@ const fs = require('fs');
 const sqlite = require('sqlite');
 const sqlite3 = require('sqlite3');
 const utils = require('./commands/utils.js');
+const MongoClient = require('mongodb').MongoClient;
 require('dotenv').config();
 
 const client = new Commando.Client({
@@ -17,11 +18,14 @@ client.coins = [];
 client.registry
     .registerDefaultTypes()
     .registerGroups([
-        ['util', 'Utility functions']
+        ['info', 'Info'],
+        ['utility', 'Utility'],
+        ['league', 'League of Legends']
     ])
     .registerDefaultGroups()
     .registerDefaultCommands({
         help: false,
+        unknownCommand: false,
     })
     .registerCommandsIn(path.join(__dirname, 'commands'))
 
@@ -39,6 +43,10 @@ fs.readdir("./events/", (err, files) => {
         client.on(eventName, (...args) => eventFunction.run(client, ...args));
     });
 });
+
+// Initializing MongoDB connection
+
+
 
 // Initializing coin imades for coinflip command
 const coinFiles = fs.readdirSync('./resources/coins').filter(file => file.endsWith('.png'));
