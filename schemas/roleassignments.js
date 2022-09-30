@@ -1,6 +1,5 @@
 const mongoose = require('mongoose');
 
-
 const roleAssignment = mongoose.Schema({
 	roleId: String,
 	channelId: String,

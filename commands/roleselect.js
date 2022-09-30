@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, SelectMenuBuilder } = require('discord.js');
+const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, SelectMenuBuilder, PermissionFlagsBits } = require('discord.js');
 const { RoleAssignment } = require('../schemas/roleassignments.js');
 const { ServerSettings } = require('../schemas/serversettings.js');
 
@@ -6,6 +6,7 @@ module.exports = {
 	data: new SlashCommandBuilder()
 		.setName('roleselect')
 		.setDescription('Displays a menu to gain access to specific channels.')
+		.setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
 		.setDMPermission(false),
 	async execute(interaction) {
 		const dbEntries = await RoleAssignment.find({ guildId: interaction.guildId });
