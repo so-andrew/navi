@@ -1,6 +1,7 @@
 const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 const axios = require('axios').default;
 const Vibrant = require('node-vibrant');
+const XRegExp = require('xregexp');
 require('dotenv').config();
 
 const rankCrests = {
@@ -53,14 +54,28 @@ module.exports = {
 			await interaction.editReply('Summoner names must be at least 3 characters long and no more than 16 characters long.');
 			return;
 		}
+		const pattern = new XRegExp('^[0-9\\p{L} _.]+$');
+		if (XRegExp.test(summonerNameLookup, pattern) === false) {
+			await interaction.editReply('Summoner name contains invalid characters.');
+			return;
+		}
 
 		let summonerRes;
 		try {
-			summonerRes = await summonerInstance.get(`${summonerNameLookup}`);
+			summonerRes = await summonerInstance.get(`${encodeURI(summonerNameLookup)}`);
 		} catch (error) {
-			console.log(error);
-			await interaction.editReply('Something went wrong.');
-			return;
+			if (error.response) {
+				console.log(error.response.data);
+				console.log(error.response.status);
+				console.log(error.response.headers);
+				if (error.response.status === 404) {
+					await interaction.editReply('Summoner not found.');
+					return;
+				} else {
+					await interaction.editReply('Something went wrong.');
+					return;
+				}
+			}
 		}
 
 		const summonerId = summonerRes.data.id;

@@ -98,7 +98,7 @@ module.exports = {
 				// console.log(leaderboardContainsSummoner);
 				if (leaderboardContainsSummoner.length === 0) {
 					const res = await Leaderboard.updateOne({ 'guildId': interaction.guildId }, { $push: { 'summonerList': summonerDocument._id } });
-					console.log(`${res.modified} database(s) modified.`);
+					console.log(`${res.modifiedCount} database(s) modified.`);
 					await interaction.editReply(`Added ${summonerDocument.name} to the leaderboard.`);
 					return;
 				} else {
@@ -123,7 +123,7 @@ module.exports = {
 				const summonerList = serverLeaderboard.summonerList;
 				if (summonerList.some(summoner => summoner.str === summonerDocument._id.str)) {
 					const res = await Leaderboard.updateOne({ 'guildId': interaction.guildId }, { $pull: { 'summonerList': summonerDocument._id } });
-					console.log(`${res.modified} database(s) modified.`);
+					console.log(`${res.modifiedCount} database(s) modified.`);
 					await interaction.editReply(`Removed ${summonerDocument.name} from the leaderboard.`);
 					return;
 				} else {
@@ -231,7 +231,17 @@ module.exports = {
 	},
 	async fetchSummoner(summonerName) {
 		// Fetch summoner information from Riot API
-		const summonerRes = await summonerInstance.get(summonerName);
+		let summonerRes;
+		try {
+			summonerRes = await summonerInstance.get(encodeURI(summonerName));
+		} catch (error) {
+			if (error.response) {
+				console.log(error.response.data);
+				console.log(error.response.status);
+				console.log(error.response.headers);
+			}
+			return null;
+		}
 		if (summonerRes.status !== 200) {
 			console.log(`Error code ${summonerRes.status}`);
 			return null;
