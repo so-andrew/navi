@@ -4,6 +4,7 @@ const serverSettings = mongoose.Schema({
 	guildId: String,
 	rolesMessage: String,
 	rolesChannel: String,
+	leaderboardChannel: String,
 });
 
 const serverSettingsSchema = mongoose.model('serversettings', serverSettings);

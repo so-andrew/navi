@@ -1,4 +1,5 @@
 const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
+const Vibrant = require('node-vibrant');
 
 module.exports = {
 	data: new SlashCommandBuilder()
@@ -17,9 +18,8 @@ module.exports = {
 			user = interaction.user;
 		}
 
-		const fetchedUser = await user.fetch();
-		user = fetchedUser;
-		const accentColor = user.hexAccentColor;
+		const palette = await Vibrant.from(user.displayAvatarURL()).getPalette();
+		const accentColor = palette['Vibrant'].hex;
 		let member;
 		let highestRole;
 
