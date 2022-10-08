@@ -1,7 +1,7 @@
 const mongo = require('../mongo.js');
 const cron = require('node-cron');
 const axios = require('axios').default;
-const { EmbedBuilder } = require('discord.js');
+const { EmbedBuilder, italic } = require('discord.js');
 const { Summoner, Leaderboard } = require('../schemas/lp_leaderboard.js');
 const { ServerSettings } = require('../schemas/serversettings.js');
 
@@ -138,16 +138,25 @@ module.exports = {
 					// Generate output array for printing
 					const output = [];
 					let count = 1;
+					let overflowCount = 0;
 					for (const summoner of summonersToPrint) {
-						output.push((count >= 1 && count <= 3) ? `${placement[count]} ${summoner.toString()}` : `${count}. ${summoner.toString()}`);
+						if (count <= 10) {
+							output.push((count >= 1 && count <= 3) ? `${placement[count]} ${summoner.toString()}` : `${count}. ${summoner.toString()}`);
+						} else {
+							overflowCount += 1;
+						}
 						count += 1;
+					}
+					let outputString = output.join('\n');
+					if (overflowCount > 0) {
+						outputString += `\n${italic(`plus ${overflowCount} more...`)}`;
 					}
 
 					// Create embed
 					const LeaderboardEmbed = new EmbedBuilder()
 						.setColor(0x03a9f4)
 						.setTitle(`${guild.name} Leaderboard`)
-						.setDescription(`${output.join('\n')}`)
+						.setDescription(outputString)
 						.setTimestamp();
 
 					// Send message
