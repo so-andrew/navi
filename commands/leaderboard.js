@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits } = require('discord.js');
+const { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits, italic } = require('discord.js');
 const { Summoner, Leaderboard } = require('../schemas/lp_leaderboard.js');
 const { ServerSettings } = require('../schemas/serversettings.js');
 const axios = require('axios').default;
@@ -51,7 +51,8 @@ module.exports = {
 		.setDMPermission(false)
 		.addSubcommand(subcommand => subcommand
 			.setName('print')
-			.setDescription('Print the leaderboard'))
+			.setDescription('Print the leaderboard')
+			.addBooleanOption(option => option.setName('expanded').setDescription('Prints the entire leaderboard.')))
 		.addSubcommand(subcommand => subcommand
 			.setName('add')
 			.setDescription('Add a summoner to the leaderboard')
@@ -70,6 +71,7 @@ module.exports = {
 	async execute(interaction) {
 		await interaction.deferReply();
 		const serverLeaderboard = await Leaderboard.findOne({ guildId: interaction.guildId });
+		const expandedLayout = interaction.options.getBoolean('expanded');
 
 		if (interaction.options.getSubcommand() === 'add') {
 			// Get summoner information from Riot API
@@ -205,15 +207,31 @@ module.exports = {
 			// console.log(summonersToPrint);
 			const output = [];
 			let count = 1;
-			for (const summoner of summonersToPrint) {
-				output.push((count >= 1 && count <= 3) ? `${placement[count]} ${summoner.toString()}` : `${count}. ${summoner.toString()}`);
-				count += 1;
+			let overflowCount = 0;
+			if (expandedLayout) {
+				for (const summoner of summonersToPrint) {
+					output.push((count >= 1 && count <= 3) ? `${placement[count]} ${summoner.toString()}` : `${count}. ${summoner.toString()}`);
+					count += 1;
+				}
+			} else {
+				for (const summoner of summonersToPrint) {
+					if (count <= 10) {
+						output.push((count >= 1 && count <= 3) ? `${placement[count]} ${summoner.toString()}` : `${count}. ${summoner.toString()}`);
+					} else {
+						overflowCount += 1;
+					}
+					count += 1;
+				}
+			}
+			let outputString = output.join('\n');
+			if (!expandedLayout && overflowCount > 0) {
+				outputString += `\n${italic(`plus ${overflowCount} more...`)}`;
 			}
 
 			const LeaderboardEmbed = new EmbedBuilder()
 				.setColor(0x03a9f4)
 				.setTitle(`${interaction.guild.name} Leaderboard`)
-				.setDescription(`${output.join('\n')}`)
+				.setDescription(outputString)
 				.setTimestamp();
 
 			await interaction.editReply({ embeds: [LeaderboardEmbed] });
