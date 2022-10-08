@@ -2,7 +2,8 @@ const { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits, italic } = requi
 const { Summoner, Leaderboard } = require('../schemas/lp_leaderboard.js');
 const { ServerSettings } = require('../schemas/serversettings.js');
 const axios = require('axios').default;
-const { use } = require('axios-request-throttle');
+const { RateLimiter } = require('limiter');
+// const { use } = require('axios-request-throttle');
 require('dotenv').config();
 
 const summonerInstance = axios.create({
@@ -17,8 +18,15 @@ const rankInstance = axios.create({
 	headers: { 'X-Riot-Token': `${process.env.RIOT_API_KEY}` },
 });
 
-use(rankInstance, { requestsPerSecond: 20 });
-use(summonerInstance, { requestsPerSecond: 20 });
+const limiter = new RateLimiter({ tokensPerInterval: 20, interval: 'second' });
+async function rateLimitRankLookup(summoner) {
+	await limiter.removeTokens(1);
+	const rankRes = await rankInstance.get(`${summoner.summonerId}`);
+	return rankRes;
+}
+
+// use(rankInstance, { requestsPerSecond: 20 });
+// use(summonerInstance, { requestsPerSecond: 20 });
 
 const placement = {
 	1: ':first_place:',
@@ -157,9 +165,34 @@ module.exports = {
 			}
 
 			const summonerLookup = async (summoners) => {
-				const output = await Promise.all(summoners.map(async (element) => {
+				const output = [];
+				for (const element of summoners) {
 					const summoner = await Summoner.findById(element);
-					const rankRes = await rankInstance.get(`${summoner.summonerId}`);
+					console.log(summoner.name);
+					const rankRes = await rateLimitRankLookup(summoner);
+					// console.log(rankRes.data);
+					let rankedSolo;
+					if (rankRes.status === 200) {
+						// console.log(rankRes.data);
+						rankedSolo = await rankRes.data.filter(league => league.queueType === 'RANKED_SOLO_5x5');
+						rankedSolo = rankedSolo[0];
+					} else {
+						console.log(`Error code ${rankRes.status}`);
+						await interaction.editReply('Something went wrong.');
+						return;
+					}
+					if (!rankedSolo) {
+						output.push(new SummonerInfo(summoner.name, 'UNRANKED', 'UNRANKED', 0));
+					}
+					else {
+						output.push(new SummonerInfo(summoner.name, rankedSolo.tier, rankedSolo.rank, rankedSolo.leaguePoints));
+					}
+					// console.log(output);
+				}
+
+				/* const output = await Promise.all(summoners.map(async (element) => {
+					const summoner = await Summoner.findById(element);
+					const rankRes = await rateLimitRankLookup(summoner);
 					// console.log(rankRes.data);
 					let rankedSolo;
 					if (rankRes.status === 200) {
@@ -178,6 +211,7 @@ module.exports = {
 					return summonerInfo;
 				}),
 				);
+				*/
 				// console.log(output);
 				return output;
 			};
