@@ -2,6 +2,7 @@ const { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits, italic } = requi
 const { Summoner, Leaderboard } = require('../schemas/lp_leaderboard.js');
 const { ServerSettings } = require('../schemas/serversettings.js');
 const axios = require('axios').default;
+const { use } = require('axios-request-throttle');
 require('dotenv').config();
 
 const summonerInstance = axios.create({
@@ -15,6 +16,9 @@ const rankInstance = axios.create({
 	timeout: 1000,
 	headers: { 'X-Riot-Token': `${process.env.RIOT_API_KEY}` },
 });
+
+use(rankInstance, { requestsPerSecond: 20 });
+use(summonerInstance, { requestsPerSecond: 20 });
 
 const placement = {
 	1: ':first_place:',
