@@ -1,9 +1,8 @@
+/* eslint-disable no-undef */
 const { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits, italic } = require('discord.js');
 const { Summoner, Leaderboard } = require('../schemas/lp_leaderboard.js');
 const { ServerSettings } = require('../schemas/serversettings.js');
 const axios = require('axios').default;
-const { RateLimiter } = require('limiter');
-// const { use } = require('axios-request-throttle');
 require('dotenv').config();
 
 const summonerInstance = axios.create({
@@ -17,16 +16,6 @@ const rankInstance = axios.create({
 	timeout: 1000,
 	headers: { 'X-Riot-Token': `${process.env.RIOT_API_KEY}` },
 });
-
-const limiter = new RateLimiter({ tokensPerInterval: 20, interval: 'second' });
-async function rateLimitRankLookup(summoner) {
-	await limiter.removeTokens(1);
-	const rankRes = await rankInstance.get(`${summoner.summonerId}`);
-	return rankRes;
-}
-
-// use(rankInstance, { requestsPerSecond: 20 });
-// use(summonerInstance, { requestsPerSecond: 20 });
 
 const placement = {
 	1: ':first_place:',
@@ -169,7 +158,7 @@ module.exports = {
 				for (const element of summoners) {
 					const summoner = await Summoner.findById(element);
 					console.log(summoner.name);
-					const rankRes = await rateLimitRankLookup(summoner);
+					const rankRes = await rankInstance.get(summoner.summonerId);
 					// console.log(rankRes.data);
 					let rankedSolo;
 					if (rankRes.status === 200) {

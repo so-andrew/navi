@@ -1,3 +1,4 @@
+/* eslint-disable no-undef */
 const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 const axios = require('axios').default;
 const Vibrant = require('node-vibrant');
