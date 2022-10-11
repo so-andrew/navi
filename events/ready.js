@@ -1,7 +1,7 @@
 const mongo = require('../mongo.js');
 const cron = require('node-cron');
 const axios = require('axios').default;
-const { EmbedBuilder } = require('discord.js');
+const { EmbedBuilder, italic } = require('discord.js');
 const { Summoner, Leaderboard } = require('../schemas/lp_leaderboard.js');
 const { ServerSettings } = require('../schemas/serversettings.js');
 
@@ -38,6 +38,13 @@ const divs = {
 	'UNRANKED': -1,
 };
 
+function delay(ms){
+	return new Promise((resolve) => {
+		setTimeout(resolve, ms);
+	});
+}
+
+
 module.exports = {
 	name: 'ready',
 	once: true,
@@ -69,7 +76,12 @@ module.exports = {
 					const serverLeaderboard = await Leaderboard.findOne({ guildId: guild.id });
 					const summonerList = serverLeaderboard.summonerList;
 
-					// SummonerInfo class for printing
+					// Get the entries from the 'summoners' database
+					const summonerDatabaseEntryList = await Promise.all(summonerList.map((element) => {
+						return Summoner.findById(element);
+					}));
+
+					// SummonerInfo helper class
 					class SummonerInfo {
 						constructor(name, tier, div, lp) {
 							this.name = name;
@@ -84,7 +96,7 @@ module.exports = {
 							return `**${this.name}** (${this.tier.substr(0, 1) + this.tier.substr(1).toLowerCase()} ${this.div}, ${this.lp} LP)`;
 						}
 					}
-					// Communicate with database, Riot API to fetch current ranks
+					/*// Communicate with database, Riot API to fetch current ranks
 					const summonerLookup = async (summoners) => {
 						const output = await Promise.all(summoners.map(async (element) => {
 							const summoner = await Summoner.findById(element);
@@ -108,9 +120,57 @@ module.exports = {
 						);
 						// console.log(output);
 						return output;
+					};*/
+
+
+
+					// Declare function for rate limiting api calls by introducing delay
+					const rankAPICall = (query, ms) => {
+						return new Promise((resolve, reject) => {
+							delay(ms).then(async () => {
+								await rankInstance.get(query)
+									.then(res => {
+										resolve(res.data.filter(league => league.queueType === 'RANKED_SOLO_5x5'));
+									})
+									.catch(error => {
+										console.log(error.message);
+										resolve(null);
+									});
+							});
+						});
 					};
 
-					const summonersToPrint = await summonerLookup(summonerList);
+					// Perform calls to Riot API here
+					const summonerRankLookup = async (summoners) => {
+						const output = [];
+
+						// Format requests to Riot API (including delay amount)
+						const requests = summoners.map((element, i) => {
+							const ms = i * 60;
+							return rankAPICall(element.summonerId, ms);
+						});
+
+						// Await all requests
+						const res = await Promise.all(requests);
+
+						// Format output with SummonerInfo helper class
+						summoners.forEach(async (summoner, i) => {
+							if (!res[i]) {
+								console.log('Something went wrong on the backend.');
+								return;
+							}
+							const rankedSolo = res[i][0];
+							if (!rankedSolo) {
+								output.push(new SummonerInfo(summoner.name, 'UNRANKED', 'UNRANKED', 0));
+							} else {
+								output.push(new SummonerInfo(summoner.name, rankedSolo.tier, rankedSolo.rank, rankedSolo.leaguePoints));
+							}
+						});
+						return output;
+					};
+
+					// Get the array of SummonerInfo objects (calling above function)
+					const summonersToPrint = await summonerRankLookup(summonerDatabaseEntryList);
 
 					// Sort by rank
 					summonersToPrint.sort((e1, e2) => {
@@ -138,16 +198,25 @@ module.exports = {
 					// Generate output array for printing
 					const output = [];
 					let count = 1;
+					let overflowCount = 0;
 					for (const summoner of summonersToPrint) {
-						output.push((count >= 1 && count <= 3) ? `${placement[count]} ${summoner.toString()}` : `${count}. ${summoner.toString()}`);
+						if (count <= 10) {
+							output.push((count >= 1 && count <= 3) ? `${placement[count]} ${summoner.toString()}` : `${count}. ${summoner.toString()}`);
+						} else {
+							overflowCount += 1;
+						}
 						count += 1;
+					}
+					let outputString = output.join('\n');
+					if (overflowCount > 0) {
+						outputString += `\n${italic(`plus ${overflowCount} more...`)}`;
 					}
 
 					// Create embed
 					const LeaderboardEmbed = new EmbedBuilder()
 						.setColor(0x03a9f4)
 						.setTitle(`${guild.name} Leaderboard`)
-						.setDescription(`${output.join('\n')}`)
+						.setDescription(outputString)
 						.setTimestamp();
 
 					// Send message

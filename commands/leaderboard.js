@@ -1,4 +1,5 @@
-const { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits } = require('discord.js');
+/* eslint-disable no-undef */
+const { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits, italic } = require('discord.js');
 const { Summoner, Leaderboard } = require('../schemas/lp_leaderboard.js');
 const { ServerSettings } = require('../schemas/serversettings.js');
 const axios = require('axios').default;
@@ -43,6 +44,12 @@ const divs = {
 	'UNRANKED': -1,
 };
 
+function delay(ms){
+	return new Promise((resolve) => {
+		setTimeout(resolve, ms);
+	});
+}
+
 module.exports = {
 	data: new SlashCommandBuilder()
 		.setName('leaderboard')
@@ -51,7 +58,8 @@ module.exports = {
 		.setDMPermission(false)
 		.addSubcommand(subcommand => subcommand
 			.setName('print')
-			.setDescription('Print the leaderboard'))
+			.setDescription('Print the leaderboard')
+			.addBooleanOption(option => option.setName('expanded').setDescription('Prints the entire leaderboard.')))
 		.addSubcommand(subcommand => subcommand
 			.setName('add')
 			.setDescription('Add a summoner to the leaderboard')
@@ -70,6 +78,7 @@ module.exports = {
 	async execute(interaction) {
 		await interaction.deferReply();
 		const serverLeaderboard = await Leaderboard.findOne({ guildId: interaction.guildId });
+		const expandedLayout = interaction.options.getBoolean('expanded');
 
 		if (interaction.options.getSubcommand() === 'add') {
 			// Get summoner information from Riot API
@@ -132,9 +141,15 @@ module.exports = {
 				}
 			}
 		} else if (interaction.options.getSubcommand() === 'print') {
+			// Get list of players on leaderboard for server
 			const summonerList = serverLeaderboard.summonerList;
-			// console.log(summonerList);
 
+			// Get the entries from the 'summoners' database
+			const summonerDatabaseEntryList = await Promise.all(summonerList.map((element) => {
+				return Summoner.findById(element);
+			}));
+
+			// SummonerInfo helper class
 			class SummonerInfo {
 				constructor(name, tier, div, lp) {
 					this.name = name;
@@ -150,36 +165,55 @@ module.exports = {
 				}
 			}
 
-			const summonerLookup = async (summoners) => {
-				const output = await Promise.all(summoners.map(async (element) => {
-					const summoner = await Summoner.findById(element);
-					const rankRes = await rankInstance.get(`${summoner.summonerId}`);
-					// console.log(rankRes.data);
-					let rankedSolo;
-					if (rankRes.status === 200) {
-						// console.log(rankRes.data);
-						rankedSolo = await rankRes.data.filter(league => league.queueType === 'RANKED_SOLO_5x5');
-						rankedSolo = rankedSolo[0];
-					} else {
-						console.log(`Error code ${rankRes.status}`);
+			// Declare function for rate limiting api calls by introducing delay
+			const rankAPICall = (query, ms) => {
+				return new Promise((resolve, reject) => {
+					delay(ms).then(async () => {
+						await rankInstance.get(query)
+							.then(res => {
+								resolve(res.data.filter(league => league.queueType === 'RANKED_SOLO_5x5'));
+							})
+							.catch(error => {
+								console.log(error.message);
+								resolve(null);
+							});
+					});
+				});
+			};
+
+			// Perform calls to Riot API here
+			const summonerRankLookup = async (summoners) => {
+				const output = [];
+
+				// Format requests to Riot API (including delay amount)
+				const requests = summoners.map((element, i) => {
+					const ms = i * 60;
+					return rankAPICall(element.summonerId, ms);
+				});
+
+				// Await all requests
+				const res = await Promise.all(requests);
+
+				// Format output with SummonerInfo helper class
+				summoners.forEach(async (summoner, i) => {
+					if (!res[i]) {
 						await interaction.editReply('Something went wrong.');
 						return;
 					}
+					const rankedSolo = res[i][0];
 					if (!rankedSolo) {
-						return new SummonerInfo(summoner.name, 'UNRANKED', 'UNRANKED', 0);
+						output.push(new SummonerInfo(summoner.name, 'UNRANKED', 'UNRANKED', 0));
+					} else {
+						output.push(new SummonerInfo(summoner.name, rankedSolo.tier, rankedSolo.rank, rankedSolo.leaguePoints));
 					}
-					const summonerInfo = new SummonerInfo(summoner.name, rankedSolo.tier, rankedSolo.rank, rankedSolo.leaguePoints);
-					return summonerInfo;
-				}),
-				);
-				// console.log(output);
+				});
 				return output;
 			};
 
-			const summonersToPrint = await summonerLookup(summonerList);
+			// Get the array of SummonerInfo objects (calling above function)
+			const summonersToPrint = await summonerRankLookup(summonerDatabaseEntryList);
 
-			// console.log(summonersToPrint);
-
+			// Sort array with custom sort function
 			summonersToPrint.sort((e1, e2) => {
 				if (tiers[e1.tier] === tiers[e2.tier]) {
 					if (divs[e1.div] === divs[e2.div]) {
@@ -202,29 +236,45 @@ module.exports = {
 				}
 			});
 
-			// console.log(summonersToPrint);
+			// Output string formatting
 			const output = [];
 			let count = 1;
-			for (const summoner of summonersToPrint) {
-				output.push((count >= 1 && count <= 3) ? `${placement[count]} ${summoner.toString()}` : `${count}. ${summoner.toString()}`);
-				count += 1;
+			let overflowCount = 0;
+			if (expandedLayout) {
+				for (const summoner of summonersToPrint) {
+					output.push((count >= 1 && count <= 3) ? `${placement[count]} ${summoner.toString()}` : `${count}. ${summoner.toString()}`);
+					count += 1;
+				}
+			} else {
+				for (const summoner of summonersToPrint) {
+					if (count <= 10) {
+						output.push((count >= 1 && count <= 3) ? `${placement[count]} ${summoner.toString()}` : `${count}. ${summoner.toString()}`);
+					} else {
+						overflowCount += 1;
+					}
+					count += 1;
+				}
+			}
+			let outputString = output.join('\n');
+			if (!expandedLayout && overflowCount > 0) {
+				outputString += `\n${italic(`plus ${overflowCount} more...`)}`;
 			}
 
 			const LeaderboardEmbed = new EmbedBuilder()
 				.setColor(0x03a9f4)
 				.setTitle(`${interaction.guild.name} Leaderboard`)
-				.setDescription(`${output.join('\n')}`)
+				.setDescription(outputString)
 				.setTimestamp();
 
 			await interaction.editReply({ embeds: [LeaderboardEmbed] });
-			// await interaction.editReply('Hi');
 			return;
 		} else if (interaction.options.getSubcommand() === 'channel') {
+			// Set channel that daily leaderboard message will appear in
 			const channelToAdd = interaction.options.getChannel('leaderboardchannel');
-			// console.log(channelToAdd);
 			await this.updateServerSettings(interaction, channelToAdd);
 			await interaction.editReply('Leaderboard channel set.');
 		} else if (interaction.options.getSubcommand() === 'disable') {
+			// Disable daily leaderboard message by removing field in database
 			await this.removeLeaderboardEntry(interaction);
 			await interaction.editReply('Leaderboard feature disabled.');
 		}
@@ -264,7 +314,6 @@ module.exports = {
 		const serverSettingsEntry = await ServerSettings.findOne({ guildId: interaction.guildId });
 		if (serverSettingsEntry) {
 			const res = await ServerSettings.updateOne({ guildId: interaction.guildId }, { $set: { leaderboardChannel: channel.id } });
-			// console.log(res);
 			console.log(`${res.modifiedCount} document(s) updated.`);
 		} else {
 			const newServerSettingsEntry = {
@@ -279,7 +328,6 @@ module.exports = {
 		const serverSettingsEntry = await ServerSettings.findOne({ guildId: interaction.guildId });
 		if (serverSettingsEntry) {
 			const res = await ServerSettings.updateOne({ guildId: interaction.guildId }, { $unset: { leaderboardChannel: '' } });
-			// console.log(res);
 			console.log(`${res.modifiedCount} document(s) updated.`);
 		} else {
 			console.log('No such entry.');
