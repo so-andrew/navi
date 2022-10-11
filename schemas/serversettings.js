@@ -5,6 +5,7 @@ const serverSettings = mongoose.Schema({
 	rolesMessage: String,
 	rolesChannel: String,
 	leaderboardChannel: String,
+	currencyName: String,
 });
 
 const serverSettingsSchema = mongoose.model('serversettings', serverSettings);
