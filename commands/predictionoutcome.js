@@ -86,7 +86,26 @@ module.exports = {
 
 				const updatePoints = async (votes) => {
 					const requests = votes.map(async (vote) => {
-						const payout = updatedPollDbEntry.outcome === 'choice1' ? (updatedPollDbEntry.choice1_points + updatedPollDbEntry.choice2_points) * (Math.floor(vote[1].points/updatedPollDbEntry.choice1_points)) : (updatedPollDbEntry.choice1_points + updatedPollDbEntry.choice2_points) * (Math.floor(vote[1].points/updatedPollDbEntry.choice2_points));
+						let payout;
+						if (updatedPollDbEntry.outcome === 'choice1') {
+							//console.log('choice1_points: ', updatedPollDbEntry.choice1_points);
+							//console.log('choice2_points: ', updatedPollDbEntry.choice2_points);
+							//console.log('winnerBetPoints: ', vote[1].points);
+							//console.log('percentage: ', vote[1].points/updatedPollDbEntry.choice1_points);
+							//console.log('percentage floor: ', Math.floor(vote[1].points/updatedPollDbEntry.choice1_points));
+
+							payout = Math.floor((updatedPollDbEntry.choice1_points + updatedPollDbEntry.choice2_points) * (vote[1].points/updatedPollDbEntry.choice1_points))
+						} else {
+							//console.log('choice1_points: ', updatedPollDbEntry.choice1_points);
+							//console.log('choice2_points: ', updatedPollDbEntry.choice2_points);
+							//console.log('winnerBetPoints: ', vote[1].points);
+							//console.log('percentage: ', vote[1].points/updatedPollDbEntry.choice2_points);
+							//console.log('percentage floor: ', Math.floor(vote[1].points/updatedPollDbEntry.choice2_points));
+
+							payout = Math.floor((updatedPollDbEntry.choice1_points + updatedPollDbEntry.choice2_points) * (vote[1].points/updatedPollDbEntry.choice2_points));
+						}
+
+						// const payout = updatedPollDbEntry.outcome === 'choice1' ? (updatedPollDbEntry.choice1_points + updatedPollDbEntry.choice2_points) * (Math.floor(vote[1].points/updatedPollDbEntry.choice1_points)) : (updatedPollDbEntry.choice1_points + updatedPollDbEntry.choice2_points) * (Math.floor(vote[1].points/updatedPollDbEntry.choice2_points));
 						console.log(`Payout: ${payout}`);
 
 						let member = interaction.guild.members.cache.get(vote[0]);
