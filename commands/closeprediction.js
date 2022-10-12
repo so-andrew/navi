@@ -42,7 +42,7 @@ module.exports = {
 			.setTitle(previousEmbed.title)
 			.setAuthor(previousEmbed.author)
 			.setFields(previousEmbed.fields)
-			.setFooter({ text: `Poll closed on ${endDate.toLocaleString('en-US')}`});
+			.setFooter({ text: `Poll closed on ${Date.now().toLocaleString('en-US')}`});
 
 		await pollMessage.edit({ embeds: [newEmbed] });
 		return;

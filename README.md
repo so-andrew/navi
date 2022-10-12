@@ -5,7 +5,7 @@ Current functionality includes:
 
 - Displaying server/user information
 - Managing roles for members in order to access private channels
-- League of legends rank lookup and daily leaderboard
+- League of Legends rank lookup and daily leaderboard
 - Twitch-style predictions with points betting
 - Bulk delete messages in a channel
 
