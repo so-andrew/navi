@@ -2,3 +2,7 @@ node_modules
 .env
 .eslintrc.json
 archive
+resources/rankedcrests
+deploy-commands-dev.js
+deploy-commands-live.js
+config-dev.json

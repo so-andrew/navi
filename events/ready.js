@@ -4,6 +4,7 @@ const axios = require('axios').default;
 const { EmbedBuilder, italic } = require('discord.js');
 const { Summoner, Leaderboard } = require('../schemas/lp_leaderboard.js');
 const { ServerSettings } = require('../schemas/serversettings.js');
+const { Points } = require('../schemas/points.js');
 
 const rankInstance = axios.create({
 	baseURL: 'https://na1.api.riotgames.com/lol/league/v4/entries/by-summoner/',
@@ -60,7 +61,7 @@ module.exports = {
 		const guilds = client.guilds.cache.map(guild => guild);
 
 		for (const guild of guilds) {
-			// Schedule cron job
+			// Schedule cron job for daily leaderboard
 			cron.schedule('0 0 6 * * *', async () => {
 				// Returns the database entry if there is a set leaderboard channel
 				const serverSettingsEntry = await ServerSettings.findOne({ guildId: guild.id, leaderboardChannel: { $exists: true } });
@@ -226,7 +227,26 @@ module.exports = {
 					console.log(`Skipping guild ${guild.name}.`);
 				}
 			});
-			console.log(`Scheduled cron job for ${guild.name}.`);
+			console.log(`Scheduled leaderboard cron job for ${guild.name}.`);
+
+			cron.schedule('0 0 6 * * *', async () => {
+				// Get users
+				const users = await Points.find({ guildId: guild.id });
+				
+				if (users) {
+					const updatePoints = async (users) => {
+						const requests = users.map(async (user) => {
+							return Points.updateOne({ guildId: guild.id, userId: user.userId }, { $inc: { points: 150 }});
+						});
+						await Promise.all(requests);
+					};
+					await updatePoints(users);
+					console.log(`Distributing daily points for ${guild.name}.`);
+				} else {
+					console.log(`Skipping point distribution for ${guild.name}`);
+				}
+			});
+			console.log(`Scheduled point assignment cron job for ${guild.name}.`);
 		}
 	},
 };

@@ -101,10 +101,7 @@ module.exports = {
 				await interaction.editReply(`Added ${summonerDocument.name} to the leaderboard.`);
 				return;
 			} else {
-				// const summonerList = serverLeaderboard.summonerList;
-
 				const leaderboardContainsSummoner = await Leaderboard.find({ 'guildId': interaction.guildId, 'summonerList': summonerDocument._id });
-				// console.log(leaderboardContainsSummoner);
 				if (leaderboardContainsSummoner.length === 0) {
 					const res = await Leaderboard.updateOne({ 'guildId': interaction.guildId }, { $push: { 'summonerList': summonerDocument._id } });
 					console.log(`${res.modifiedCount} database(s) modified.`);

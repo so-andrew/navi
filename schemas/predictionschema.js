@@ -17,6 +17,10 @@ const prediction = mongoose.Schema({
 		type: Long,
 	},
 	closed: Boolean,
+	outcome: {
+		type: String, 
+		enum: ['choice1', 'choice2']
+	},
 	users: {
 		type: Map,
 		of: Object,

@@ -41,7 +41,7 @@ module.exports = {
 		if (!userPointsDBEntry) {
 			console.log('Creating new database entry...');
 			const newPoints = {
-				userId: interaction.user.id,
+				userId: user.id,
 				guildId: interaction.guildId,
 				points: 1000,
 			};

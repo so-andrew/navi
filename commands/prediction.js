@@ -9,24 +9,30 @@ module.exports = {
 	async execute(interaction) {
 		const modal = new ModalBuilder()
 			.setCustomId('pollCreateModal')
-			.setTitle('Create Poll');
+			.setTitle('Create Prediction');
 
 		const pollTitleInput = new TextInputBuilder()
 			.setCustomId('pollTitleInput')
-			.setLabel('Poll Title')
+			.setLabel('Prediction Title')
+			.setPlaceholder('e.g. Will he wonnered?')
 			.setStyle(TextInputStyle.Short)
+			.setMaxLength(1000)
 			.setRequired(true);
 
 		const pollChoice1Input = new TextInputBuilder()
 			.setCustomId('pollChoice1Input')
 			.setLabel('Choice 1')
+			.setPlaceholder('e.g. yep')
 			.setStyle(TextInputStyle.Short)
+			.setMaxLength(100)
 			.setRequired(true);
 
 		const pollChoice2Input = new TextInputBuilder()
 			.setCustomId('pollChoice2Input')
 			.setLabel('Choice 2')
+			.setPlaceholder('e.g. nop')
 			.setStyle(TextInputStyle.Short)
+			.setMaxLength(100)
 			.setRequired(true);
 
 		const actionRow1 = new ActionRowBuilder().addComponents(pollTitleInput);
