@@ -30,10 +30,6 @@ module.exports = {
 		const res = await Prediction.updateOne({ 'messageId': pollId }, { $set: { 'closed': true } });
 		console.log(`${res.modifiedCount} database(s) modified.`);
 
-		const newPollDbEntry = await Prediction.findOne({ messageId: pollId });
-		const endDate = new Date(Number(newPollDbEntry.endDate));
-		console.log(Number(newPollDbEntry.endDate));
-
 		const pollMessage = interaction.channel.messages.cache.get(pollId);
 		const previousEmbed = pollMessage.embeds[0];
 
