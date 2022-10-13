@@ -32,13 +32,14 @@ module.exports = {
 
 		const pollMessage = interaction.channel.messages.cache.get(pollId);
 		const previousEmbed = pollMessage.embeds[0];
+		const currentTime = new Date(Date.now());
 
 		const newEmbed = new EmbedBuilder()
 			.setColor(0xf44336)
 			.setTitle(previousEmbed.title)
 			.setAuthor(previousEmbed.author)
 			.setFields(previousEmbed.fields)
-			.setFooter({ text: `Poll closed on ${Date.now().toLocaleString('en-US')}`});
+			.setFooter({ text: `Poll closed on ${currentTime.toLocaleString('en-US')}`});
 
 		await pollMessage.edit({ embeds: [newEmbed] });
 		return;
