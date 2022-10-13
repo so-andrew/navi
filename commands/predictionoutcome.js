@@ -1,4 +1,5 @@
 const { ContextMenuCommandBuilder, ApplicationCommandType, PermissionFlagsBits, EmbedBuilder } = require('discord.js');
+const logger = require('../logger.js');
 const { Points } = require('../schemas/points.js');
 const { Prediction } = require('../schemas/predictionschema.js');
 const { ServerSettings } = require('../schemas/serversettings.js');
@@ -87,26 +88,27 @@ module.exports = {
 				const updatePoints = async (votes) => {
 					const requests = votes.map(async (vote) => {
 						let payout;
+						logger.debug(`Current user: ${vote[0]}`);
 						if (updatedPollDbEntry.outcome === 'choice1') {
-							//console.log('choice1_points: ', updatedPollDbEntry.choice1_points);
-							//console.log('choice2_points: ', updatedPollDbEntry.choice2_points);
-							//console.log('winnerBetPoints: ', vote[1].points);
-							//console.log('percentage: ', vote[1].points/updatedPollDbEntry.choice1_points);
-							//console.log('percentage floor: ', Math.floor(vote[1].points/updatedPollDbEntry.choice1_points));
+							logger.debug('choice1_points: ', updatedPollDbEntry.choice1_points);
+							logger.debug('choice2_points: ', updatedPollDbEntry.choice2_points);
+							logger.debug('winnerBetPoints: ', vote[1].points);
+							logger.debug('percentage: ', vote[1].points/updatedPollDbEntry.choice1_points);
+							logger.debug('percentage floor: ', Math.floor(vote[1].points/updatedPollDbEntry.choice1_points));
 
 							payout = Math.floor((updatedPollDbEntry.choice1_points + updatedPollDbEntry.choice2_points) * (vote[1].points/updatedPollDbEntry.choice1_points))
 						} else {
-							//console.log('choice1_points: ', updatedPollDbEntry.choice1_points);
-							//console.log('choice2_points: ', updatedPollDbEntry.choice2_points);
-							//console.log('winnerBetPoints: ', vote[1].points);
-							//console.log('percentage: ', vote[1].points/updatedPollDbEntry.choice2_points);
-							//console.log('percentage floor: ', Math.floor(vote[1].points/updatedPollDbEntry.choice2_points));
+							logger.debug('choice1_points: ', updatedPollDbEntry.choice1_points);
+							logger.debug('choice2_points: ', updatedPollDbEntry.choice2_points);
+							logger.debug('winnerBetPoints: ', vote[1].points);
+							logger.debug('percentage: ', vote[1].points/updatedPollDbEntry.choice2_points);
+							logger.debug('percentage floor: ', Math.floor(vote[1].points/updatedPollDbEntry.choice2_points));
 
 							payout = Math.floor((updatedPollDbEntry.choice1_points + updatedPollDbEntry.choice2_points) * (vote[1].points/updatedPollDbEntry.choice2_points));
 						}
 
 						// const payout = updatedPollDbEntry.outcome === 'choice1' ? (updatedPollDbEntry.choice1_points + updatedPollDbEntry.choice2_points) * (Math.floor(vote[1].points/updatedPollDbEntry.choice1_points)) : (updatedPollDbEntry.choice1_points + updatedPollDbEntry.choice2_points) * (Math.floor(vote[1].points/updatedPollDbEntry.choice2_points));
-						console.log(`Payout: ${payout}`);
+						logger.info(`Payout for ${vote[0]}: ${payout}`);
 
 						let member = interaction.guild.members.cache.get(vote[0]);
 						if (!member) {
@@ -174,7 +176,7 @@ module.exports = {
 
 			})
 			.catch(async collected => {
-				console.log(collected);
+				logger.debug(collected);
 				await interaction.editReply('Interaction has timed out.');
 				return;
 			});

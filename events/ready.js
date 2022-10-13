@@ -5,6 +5,7 @@ const { EmbedBuilder, italic } = require('discord.js');
 const { Summoner, Leaderboard } = require('../schemas/lp_leaderboard.js');
 const { ServerSettings } = require('../schemas/serversettings.js');
 const { Points } = require('../schemas/points.js');
+const logger = require('../logger');
 
 const rankInstance = axios.create({
 	baseURL: 'https://na1.api.riotgames.com/lol/league/v4/entries/by-summoner/',
@@ -53,7 +54,7 @@ module.exports = {
 
 		mongo();
 		await this.leaderboardInitializeCronJobs(client);
-		console.log(`Logged in as ${client.user.tag}.`);
+		logger.info(`Logged in as ${client.user.tag}.`);
 
 	},
 	async leaderboardInitializeCronJobs(client) {
@@ -97,33 +98,6 @@ module.exports = {
 							return `**${this.name}** (${this.tier.substr(0, 1) + this.tier.substr(1).toLowerCase()} ${this.div}, ${this.lp} LP)`;
 						}
 					}
-					/*// Communicate with database, Riot API to fetch current ranks
-					const summonerLookup = async (summoners) => {
-						const output = await Promise.all(summoners.map(async (element) => {
-							const summoner = await Summoner.findById(element);
-							const rankRes = await rankInstance.get(`${summoner.summonerId}`);
-							// console.log(rankRes.data);
-							let rankedSolo;
-							if (rankRes.status === 200) {
-								// console.log(rankRes.data);
-								rankedSolo = await rankRes.data.filter(league => league.queueType === 'RANKED_SOLO_5x5');
-								rankedSolo = rankedSolo[0];
-							} else {
-								console.log(`Error code ${rankRes.status}`);
-								return;
-							}
-							if (!rankedSolo) {
-								return new SummonerInfo(summoner.name, 'UNRANKED', 'UNRANKED', 0);
-							}
-							const summonerInfo = new SummonerInfo(summoner.name, rankedSolo.tier, rankedSolo.rank, rankedSolo.leaguePoints);
-							return summonerInfo;
-						}),
-						);
-						// console.log(output);
-						return output;
-					};*/
-
-
 
 					// Declare function for rate limiting api calls by introducing delay
 					const rankAPICall = (query, ms) => {
@@ -134,7 +108,7 @@ module.exports = {
 										resolve(res.data.filter(league => league.queueType === 'RANKED_SOLO_5x5'));
 									})
 									.catch(error => {
-										console.log(error.message);
+										logger.error(error.message);
 										resolve(null);
 									});
 							});
@@ -157,7 +131,7 @@ module.exports = {
 						// Format output with SummonerInfo helper class
 						summoners.forEach(async (summoner, i) => {
 							if (!res[i]) {
-								console.log('Something went wrong on the backend.');
+								logger.error('Something went wrong on the backend.');
 								return;
 							}
 							const rankedSolo = res[i][0];
@@ -222,12 +196,12 @@ module.exports = {
 
 					// Send message
 					channel.send({ embeds: [LeaderboardEmbed] });
-					console.log(`Posting leaderboard message for ${guild.name}.`);
+					logger.info(`Posting leaderboard message for ${guild.name}.`);
 				} else {
-					console.log(`Skipping guild ${guild.name}.`);
+					logger.info(`Skipping guild ${guild.name}.`);
 				}
 			});
-			console.log(`Scheduled leaderboard cron job for ${guild.name}.`);
+			logger.info(`Scheduled leaderboard cron job for ${guild.name}.`);
 
 			cron.schedule('0 0 6 * * *', async () => {
 				// Get users
@@ -241,12 +215,12 @@ module.exports = {
 						await Promise.all(requests);
 					};
 					await updatePoints(users);
-					console.log(`Distributing daily points for ${guild.name}.`);
+					logger.info(`Distributing daily points for ${guild.name}.`);
 				} else {
-					console.log(`Skipping point distribution for ${guild.name}`);
+					logger.info(`Skipping point distribution for ${guild.name}`);
 				}
 			});
-			console.log(`Scheduled point assignment cron job for ${guild.name}.`);
+			logger.info(`Scheduled point assignment cron job for ${guild.name}.`);
 		}
 	},
 };

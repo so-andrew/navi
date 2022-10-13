@@ -3,13 +3,14 @@ const { RoleAssignment } = require('../schemas/roleassignments.js');
 const { Points } = require('../schemas/points.js');
 const { Prediction } = require('../schemas/predictionschema.js');
 const { ServerSettings } = require('../schemas/serversettings.js');
+const logger = require('../logger');
 
 const pollLengthMs = 1000 * 60 * 8;
 
 module.exports = {
 	name: 'interactionCreate',
 	async execute(interaction) {
-		console.log(`${interaction.user.tag} in #${interaction.channel.name} triggered an interaction.`);
+		//logger.info(`${interaction.user.tag} in #${interaction.channel.name} triggered an interaction.`);
 		if (!interaction.isChatInputCommand() && !interaction.isSelectMenu() && !interaction.isModalSubmit() && !interaction.isButton() && !interaction.isMessageContextMenuCommand()) return;
 
 		// Interaction is a slash command or context menu command
@@ -18,14 +19,16 @@ module.exports = {
 			if (!command) return;
 
 			try {
+				logger.info(`${interaction.user.tag} in #${interaction.channel.name} invoked /${interaction.commandName}.`);
 				await command.execute(interaction);
 			} catch (error) {
-				console.error(error);
+				logger.error(error);
 				await interaction.reply({ content: 'Error executing this command.', ephemeral: true });
 			}
 		} 
 		// Interaction is a select menu
 		else if (interaction.isSelectMenu()) {
+			logger.info(`${interaction.user.tag} in #${interaction.channel.name} interacted with select menu ${interaction.customId}.`);
 			if (interaction.customId === 'selectRole') {
 				const allRoles = await interaction.guild.roles.fetch();
 				const allChannels = await interaction.guild.channels.fetch();
@@ -62,6 +65,7 @@ module.exports = {
 		} 
 		// Interaction is a modal submit
 		else if (interaction.isModalSubmit()) {
+			logger.info(`${interaction.user.tag} in #${interaction.channel.name} interacted with modal ${interaction.customId}.`);
 			if (interaction.customId === 'pollCreateModal') {
 				const pollMessage = await interaction.channel.send({ content: 'Creating poll, one moment...' });
 				const poll = {
@@ -77,7 +81,9 @@ module.exports = {
 					closed: false,
 				};
 				const res = await Prediction.insertMany(poll);
-				console.log(res[0].guildId ? 'Successfully created database entry.' : 'Failed to connect to database.');
+				//console.log(res[0].messageId ? 'Successfully created poll.' : 'Failed to connect to database.');
+				logger.info(res[0].messageId ? 'Successfully created poll.' : 'Failed to create poll.');
+				logger.info(res); 
 
 				const endDate = new Date(poll.endDate);
 
@@ -110,6 +116,7 @@ module.exports = {
 		}
 		// Interaction is a button press 
 		else if (interaction.isButton()) {
+			logger.info(`${interaction.user.tag} in #${interaction.channel.name} interacted with button ${interaction.customId}.`);
 			await interaction.deferReply({ ephemeral: true });
 			const identifiers = interaction.customId.split('_');
 			if (identifiers[0] === 'p') {
@@ -118,7 +125,7 @@ module.exports = {
 				const pollChoice = identifiers[2];
 				const pollDbEntry = await Prediction.findOne({ messageId: pollId });
 				if (!pollDbEntry) {
-					console.log('No such poll.');
+					logger.info('No such poll.');
 					await interaction.editReply('Something went wrong.');
 					return;
 				}
@@ -206,7 +213,7 @@ module.exports = {
 														// console.log(message);
 														if (message.content.toLowerCase() === 'y'){
 															const res = await Points.updateOne({ guildId: interaction.guildId, userId: interaction.user.id }, { $set: { points: 0 }});
-															console.log(`${res.modifiedCount} document(s) updated.`);
+															logger.info(res.modifiedCount ? `User ${interaction.user.username} (${interaction.user.id}) now has 0 points (previously ${userPointsDBEntry.points}).` : `Something went wrong when removing points from user ${interaction.user.username} (${interaction.user.id}).`);
 														} else {
 															DMChannel.send('Acknowleged. If you still wish to vote, please return to the poll.');
 															return;
@@ -219,8 +226,10 @@ module.exports = {
 										} else {
 											// Update user's points
 											const currentPoints = userPointsDBEntry.points;
-											const res = await Points.updateOne({ guildId: interaction.guildId, userId: interaction.user.id }, { $set: { points: currentPoints - pointsBet }});
-											console.log(`${res.modifiedCount} document(s) updated.`);
+											const newPoints = currentPoints - pointsBet;
+											const res = await Points.updateOne({ guildId: interaction.guildId, userId: interaction.user.id }, { $set: { points: newPoints }});
+											logger.info(`${interaction.user.username} now has ${newPoints} points (previously ${currentPoints} points).`);
+											//logger.info(`${res.modifiedCount} document(s) updated.`);
 
 											// Update poll database entry to track votes
 											let newUserPoints;
@@ -234,19 +243,21 @@ module.exports = {
 											if (pollChoice === 'choice1') {
 												currentPointTotal = pollDbEntry.choice1_points;
 												let newPointTotal = currentPointTotal + parseInt(pointsBet, 10);
-												const pollDbRes = await Prediction.updateOne({ messageId: pollId }, { $set: { [`users.${interaction.user.id}`]: {
+												await Prediction.updateOne({ messageId: pollId }, { $set: { [`users.${interaction.user.id}`]: {
 													choice: pollChoice,
 													points: newUserPoints,  
 												}, choice1_points: newPointTotal }});
-												console.log('Updated poll database.', pollDbRes);
+												//logger.info('Updated poll database.');
+												logger.info(`Poll ${pollId} choice 1 points set to ${newPointTotal} (previously ${currentPointTotal})`);
 											} else {
 												currentPointTotal = pollDbEntry.choice2_points;
 												let newPointTotal = currentPointTotal + parseInt(pointsBet, 10);
-												const pollDbRes = await Prediction.updateOne({ messageId: pollId }, { $set: { [`users.${interaction.user.id}`]: {
+												await Prediction.updateOne({ messageId: pollId }, { $set: { [`users.${interaction.user.id}`]: {
 													choice: pollChoice,
 													points: newUserPoints,  
 												}, choice2_points: newPointTotal }});
-												console.log('Updated poll database.', pollDbRes);
+												//logger.info('Updated poll database.');
+												logger.info(`Poll ${pollId} choice 2 points set to ${newPointTotal} (previously ${currentPointTotal})`);
 											}
 
 											// Fetch updated poll database entry
@@ -283,7 +294,7 @@ module.exports = {
 								}
 							})
 							.catch(collected => {
-								console.log(collected);
+								logger.debug(collected);
 								DMChannel.send('Interaction has timed out. If you still wish to vote, please return to the poll.');
 								return;
 							});
@@ -293,7 +304,7 @@ module.exports = {
 	},
 	async closePoll(interaction, pollId){
 		const res = await Prediction.updateOne({ 'messageId': pollId }, { $set: { 'closed': true } });
-		console.log(`${res.modifiedCount} database(s) modified.`);
+		logger.info(res.acknowledged ? `Poll ${pollId} is now closed.` :  `Something went wrong when trying to close poll ${pollId} automatically (may have already been closed).`);
 
 		const newPollDbEntry = await Prediction.findOne({ messageId: pollId });
 		const endDate = new Date(Number(newPollDbEntry.endDate));
