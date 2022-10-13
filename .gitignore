@@ -6,3 +6,5 @@ resources/rankedcrests
 deploy-commands-dev.js
 deploy-commands-live.js
 config-dev.json
+NAVI.code-workspace
+config.xlaunch
