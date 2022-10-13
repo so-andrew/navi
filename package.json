@@ -25,7 +25,7 @@
   "version": "1.2.1",
   "scripts": {
     "dev-test": "node ./deploy-commands-dev.js && node .",
-    "deploy": "node ./deploy-commands-dev.js && ./deploy-commands-live.js && pm2 restart NAVI"
+    "deploy": "node ./deploy-commands-dev.js && node ./deploy-commands-live.js && pm2 restart NAVI"
   },
   "repository": {
     "type": "git",
