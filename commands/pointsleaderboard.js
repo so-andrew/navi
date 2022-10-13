@@ -14,7 +14,6 @@ module.exports = {
 		.setDMPermission(false),
 	async execute(interaction) {
 		const usersToPrint = await Points.find({ guildId: interaction.guildId });
-		console.log(usersToPrint);
 		
 		usersToPrint.sort((e1, e2) => {
 			if(e1.points === e2.points) {
