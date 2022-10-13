@@ -1,5 +1,6 @@
 const { ContextMenuCommandBuilder, ApplicationCommandType, PermissionFlagsBits, EmbedBuilder } = require('discord.js');
 const { Prediction } = require('../schemas/predictionschema.js');
+const logger = require('../logger');
 
 module.exports = {
 	data: new ContextMenuCommandBuilder()
@@ -28,7 +29,7 @@ module.exports = {
 	},
 	async closePoll(interaction, pollId){
 		const res = await Prediction.updateOne({ 'messageId': pollId }, { $set: { 'closed': true } });
-		console.log(`${res.modifiedCount} database(s) modified.`);
+		logger.info(res.modifiedCount ? `Poll ${pollId} is now closed.` : 'Something went wrong when trying to close the poll.');
 
 		const pollMessage = interaction.channel.messages.cache.get(pollId);
 		const previousEmbed = pollMessage.embeds[0];

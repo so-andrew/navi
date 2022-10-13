@@ -5,6 +5,9 @@ archive
 resources/rankedcrests
 deploy-commands-dev.js
 deploy-commands-live.js
+logger.js
+logger-prod.js
 config-dev.json
+log.json
 NAVI.code-workspace
 config.xlaunch
