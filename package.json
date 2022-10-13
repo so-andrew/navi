@@ -24,8 +24,8 @@
   "description": "A Discord bot I made to use in small personal servers for managing roles and providing various utilities.",
   "version": "1.2.1",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "dev-test": "node ./deploy-commands-dev.js && node ."
+    "dev-test": "node ./deploy-commands-dev.js && node .",
+    "deploy": "node ./deploy-commands-dev.js && ./deploy-commands-live.js && pm2 restart NAVI"
   },
   "repository": {
     "type": "git",

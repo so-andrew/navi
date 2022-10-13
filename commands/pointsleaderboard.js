@@ -1,5 +1,6 @@
 const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 const { Points } = require('../schemas/points');
+const { ServerSettings } = require('../schemas/serversettings');
 
 const placement = {
 	1: ':first_place:',
@@ -23,6 +24,14 @@ module.exports = {
 			} else return 1;
 		});
 
+		const serverSettingsEntry = await ServerSettings.findOne({ guildId: interaction.guildId });
+		let currencyName;
+		if (!serverSettingsEntry || !serverSettingsEntry.currencyName) {
+			currencyName = 'pt';
+		} else {
+			currencyName = serverSettingsEntry.currencyName;
+		}
+
 		const output = [];
 		let count = 1;
 		for (const userPoints of usersToPrint) {
@@ -31,7 +40,7 @@ module.exports = {
 				member = await interaction.guild.members.fetch(userPoints.userId);
 			}
 			const user = member.user;
-			output.push((count >= 1 && count <= 3) ? `${placement[count]} **${user.username}** (${userPoints.points} pts)` : `${count}. **${user.username}** (${userPoints.points} pts)`);
+			output.push((count >= 1 && count <= 3) ? `${placement[count]} **${user.username}** (${userPoints.points} ${currencyName}s)` : `${count}. **${user.username}** (${userPoints.points} ${currencyName}s)`);
 			count += 1;
 		}
 		let outputString = output.join('\n');
