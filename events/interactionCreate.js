@@ -203,7 +203,7 @@ module.exports = {
 											const unavailablePointsEmbed = new EmbedBuilder()
 												.setColor(0x03a9f4)
 												.setAuthor({ name: interaction.user.username, iconURL: interaction.user.displayAvatarURL() })
-												.setDescription(`You only have **${userPointsDBEntry.points}** ${currencyName}s to spend. Would you like to spend all of them?\n\nReply Y/N within 30 seconds to continue.`)
+												.setDescription(`You only have **${userPointsDBEntry.points}** ${currencyName}s to spend. Would you like to spend all of them?\n\nReply Y/N within 30 seconds to continue.`);
 
 											await DMChannel.send({ embeds: [unavailablePointsEmbed] });
 											const ynFilter = m => !m.author.bot && (m.content.toLowerCase() === 'y' || m.content.toLowerCase() === 'n');
@@ -242,22 +242,33 @@ module.exports = {
 											let currentPointTotal;
 											if (pollChoice === 'choice1') {
 												currentPointTotal = pollDbEntry.choice1_points;
-												let newPointTotal = currentPointTotal + parseInt(pointsBet, 10);
-												await Prediction.updateOne({ messageId: pollId }, { $set: { [`users.${interaction.user.id}`]: {
-													choice: pollChoice,
-													points: newUserPoints,  
-												}, choice1_points: newPointTotal }});
+												//let newPointTotal = currentPointTotal + parseInt(pointsBet, 10);
+												const pointsBetInt = parseInt(pointsBet, 10);
+												await Prediction.updateOne({ messageId: pollId }, 
+													{ $set: { [`users.${interaction.user.id}`]: 
+														{ 
+															choice: pollChoice,
+															points: newUserPoints 
+														} 
+													},
+													$inc: { choice1_points: pointsBetInt} }
+												);
 												//logger.info('Updated poll database.');
-												logger.info(`Poll ${pollId} choice 1 points set to ${newPointTotal} (previously ${currentPointTotal})`);
+												logger.info(`Poll ${pollId} choice 1 points set to ${currentPointTotal + pointsBetInt} (previously ${currentPointTotal})`);
 											} else {
 												currentPointTotal = pollDbEntry.choice2_points;
-												let newPointTotal = currentPointTotal + parseInt(pointsBet, 10);
-												await Prediction.updateOne({ messageId: pollId }, { $set: { [`users.${interaction.user.id}`]: {
-													choice: pollChoice,
-													points: newUserPoints,  
-												}, choice2_points: newPointTotal }});
+												//let newPointTotal = currentPointTotal + parseInt(pointsBet, 10);
+												const pointsBetInt = parseInt(pointsBet, 10);
+												await Prediction.updateOne({ messageId: pollId }, 
+													{ $set: { [`users.${interaction.user.id}`]: 
+														{
+															choice: pollChoice,
+															points: newUserPoints,  
+														}
+													}, 
+													$inc: { choice2_points: pointsBetInt } });
 												//logger.info('Updated poll database.');
-												logger.info(`Poll ${pollId} choice 2 points set to ${newPointTotal} (previously ${currentPointTotal})`);
+												logger.info(`Poll ${pollId} choice 2 points set to ${currentPointTotal + pointsBetInt} (previously ${currentPointTotal})`);
 											}
 
 											// Fetch updated poll database entry
