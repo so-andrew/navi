@@ -68,7 +68,7 @@ module.exports = {
 			const currentDate = Date.now();
 			if (currentDate > new Date(2022, 11, 15, 3, 0, 0) && currentDate < new Date(2023, 1, 6, 19, 0, 0)) {
 				if (globals.rankedSeasonActive) {
-					await Globals.updateOne({ botUserId: client.user.id }, { $set: { rankedSeasonActive: false } });
+					await Globals.findByIdAndUpdate('636d6d10c0cc3c0c70a6bfe2', { $set: { rankedSeasonActive: false } });
 				}
 				logger.info('Ranked season has not started yet.');
 			}
