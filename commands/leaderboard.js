@@ -80,7 +80,7 @@ module.exports = {
 		await interaction.deferReply();
 		const serverLeaderboard = await Leaderboard.findOne({ guildId: interaction.guildId });
 		const expandedLayout = interaction.options.getBoolean('expanded');
-		const globals = await Globals.findOne({ botUserId: interaction.client.user.id });
+		const globals = await Globals.findById('636d6d10c0cc3c0c70a6bfe2');
 
 		if (interaction.options.getSubcommand() === 'add') {
 			// Get summoner information from Riot API

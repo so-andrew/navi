@@ -61,7 +61,7 @@ module.exports = {
 	async leaderboardInitializeCronJobs(client) {
 		// Get all guilds
 		const guilds = client.guilds.cache.map(guild => guild);
-		const globals = await Globals.findOne({ botUserId: client.user.id });
+		const globals = await Globals.findById('636d6d10c0cc3c0c70a6bfe2');
 
 		for (const guild of guilds) {
 
