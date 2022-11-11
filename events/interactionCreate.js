@@ -23,7 +23,10 @@ module.exports = {
 				await command.execute(interaction);
 			} catch (error) {
 				logger.error(error);
-				await interaction.reply({ content: 'Error executing this command.', ephemeral: true });
+				if (interaction.deferred) {
+					await interaction.editReply({ content: 'Error executing this command.' });
+				}
+				else await interaction.reply({ content: 'Error executing this command.', ephemeral: true });
 			}
 		} 
 		// Interaction is a select menu
