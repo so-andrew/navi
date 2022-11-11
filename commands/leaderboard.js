@@ -2,6 +2,7 @@
 const { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits, italic } = require('discord.js');
 const { Summoner, Leaderboard } = require('../schemas/lp_leaderboard.js');
 const { ServerSettings } = require('../schemas/serversettings.js');
+const { Globals } = require('../schemas/globals.js');
 const axios = require('axios').default;
 require('dotenv').config();
 
@@ -79,6 +80,7 @@ module.exports = {
 		await interaction.deferReply();
 		const serverLeaderboard = await Leaderboard.findOne({ guildId: interaction.guildId });
 		const expandedLayout = interaction.options.getBoolean('expanded');
+		const globals = await Globals.findOne({ botUserId: interaction.client.user.id });
 
 		if (interaction.options.getSubcommand() === 'add') {
 			// Get summoner information from Riot API
@@ -138,133 +140,190 @@ module.exports = {
 				}
 			}
 		} else if (interaction.options.getSubcommand() === 'print') {
-			// Get list of players on leaderboard for server
-			const summonerList = serverLeaderboard.summonerList;
+			if(!globals.rankedSeasonActive) {
 
-			// Get the entries from the 'summoners' database
-			const summonerDatabaseEntryList = await Promise.all(summonerList.map((element) => {
-				return Summoner.findById(element);
-			}));
+				const pastLeaderboards = serverLeaderboard.pastLeaderboards;
+				const mostRecentLeaderboard = Array.from(pastLeaderboards.entries()).pop();
+				const summonersToPrint = mostRecentLeaderboard[1];
 
-			// SummonerInfo helper class
-			class SummonerInfo {
-				constructor(name, tier, div, lp) {
-					this.name = name;
-					this.tier = tier;
-					this.div = div;
-					this.lp = lp;
-				}
-				toString() {
-					if (this.tier === 'UNRANKED') {
-						return `**${this.name}** (Unranked)`;
-					}
-					return `**${this.name}** (${this.tier.substr(0, 1) + this.tier.substr(1).toLowerCase()} ${this.div}, ${this.lp} LP)`;
-				}
-			}
-
-			// Declare function for rate limiting api calls by introducing delay
-			const rankAPICall = (query, ms) => {
-				return new Promise((resolve, reject) => {
-					delay(ms).then(async () => {
-						await rankInstance.get(query)
-							.then(res => {
-								resolve(res.data.filter(league => league.queueType === 'RANKED_SOLO_5x5'));
-							})
-							.catch(error => {
-								console.log(error.message);
-								resolve(null);
-							});
-					});
-				});
-			};
-
-			// Perform calls to Riot API here
-			const summonerRankLookup = async (summoners) => {
+				//const summonersToPrint = serverLeaderboard.pastLeaderboards.get('test');
+				// Output string formatting
 				const output = [];
+				let count = 1;
+				let overflowCount = 0;
 
-				// Format requests to Riot API (including delay amount)
-				const requests = summoners.map((element, i) => {
-					const ms = i * 60;
-					return rankAPICall(element.summonerId, ms);
-				});
+				if (expandedLayout) {
+					for (const summoner of summonersToPrint) {
+						let summonerString = '';
+						if (summoner.tier === 'UNRANKED') {
+							summonerString = `**${summoner.name}** (Unranked)`;
+						}
+						else summonerString = `**${summoner.name}** (${summoner.tier.substr(0, 1) + summoner.tier.substr(1).toLowerCase()} ${summoner.div}, ${summoner.lp} LP)`;
 
-				// Await all requests
-				const res = await Promise.all(requests);
-
-				// Format output with SummonerInfo helper class
-				summoners.forEach(async (summoner, i) => {
-					if (!res[i]) {
-						await interaction.editReply('Something went wrong.');
-						return;
+						output.push((count >= 1 && count <= 3) ? `${placement[count]} ${summonerString}` : `${count}. ${summonerString}`);
+						count += 1;
 					}
-					const rankedSolo = res[i][0];
-					if (!rankedSolo) {
-						output.push(new SummonerInfo(summoner.name, 'UNRANKED', 'UNRANKED', 0));
-					} else {
-						output.push(new SummonerInfo(summoner.name, rankedSolo.tier, rankedSolo.rank, rankedSolo.leaguePoints));
+				} else {
+					for (const summoner of summonersToPrint) {
+						let summonerString = '';
+						if (summoner.tier === 'UNRANKED') {
+							summonerString = `**${summoner.name}** (Unranked)`;
+						}
+						else summonerString = `**${summoner.name}** (${summoner.tier.substr(0, 1) + summoner.tier.substr(1).toLowerCase()} ${summoner.div}, ${summoner.lp} LP)`;
+
+						if (count <= 10) {
+							output.push((count >= 1 && count <= 3) ? `${placement[count]} ${summonerString}` : `${count}. ${summonerString}`);
+						} else {
+							overflowCount += 1;
+						}
+						count += 1;
 					}
-				});
-				return output;
-			};
+				}
 
-			// Get the array of SummonerInfo objects (calling above function)
-			const summonersToPrint = await summonerRankLookup(summonerDatabaseEntryList);
+				let outputString = output.join('\n');
+				if (!expandedLayout && overflowCount > 0) {
+					outputString += `\n${italic(`plus ${overflowCount} more...`)}`;
+				}
 
-			// Sort array with custom sort function
-			summonersToPrint.sort((e1, e2) => {
-				if (tiers[e1.tier] === tiers[e2.tier]) {
-					if (divs[e1.div] === divs[e2.div]) {
-						if (e1.lp === e2.lp) {
-							return 0;
-						} else if (e1.lp > e2.lp) {
+				const LeaderboardEmbed = new EmbedBuilder()
+					.setColor(0x03a9f4)
+					.setTitle(`${interaction.guild.name} ${mostRecentLeaderboard[0]} Leaderboard`)
+					.setDescription(outputString)
+					.setTimestamp();
+
+				await interaction.editReply({ embeds: [LeaderboardEmbed] });
+				return;
+			}
+			else {
+				// Get list of players on leaderboard for server
+				const summonerList = serverLeaderboard.summonerList;
+
+				// Get the entries from the 'summoners' database
+				const summonerDatabaseEntryList = await Promise.all(summonerList.map((element) => {
+					return Summoner.findById(element);
+				}));
+
+				// SummonerInfo helper class
+				class SummonerInfo {
+					constructor(name, tier, div, lp) {
+						this.name = name;
+						this.tier = tier;
+						this.div = div;
+						this.lp = lp;
+					}
+					toString() {
+						if (this.tier === 'UNRANKED') {
+							return `**${this.name}** (Unranked)`;
+						}
+						return `**${this.name}** (${this.tier.substr(0, 1) + this.tier.substr(1).toLowerCase()} ${this.div}, ${this.lp} LP)`;
+					}
+				}
+
+				// Declare function for rate limiting api calls by introducing delay
+				const rankAPICall = (query, ms) => {
+					return new Promise((resolve, reject) => {
+						delay(ms).then(async () => {
+							await rankInstance.get(query)
+								.then(res => {
+									resolve(res.data.filter(league => league.queueType === 'RANKED_SOLO_5x5'));
+								})
+								.catch(error => {
+									console.log(error.message);
+									resolve(null);
+								});
+						});
+					});
+				};
+
+				// Perform calls to Riot API here
+				const summonerRankLookup = async (summoners) => {
+					const output = [];
+
+					// Format requests to Riot API (including delay amount)
+					const requests = summoners.map((element, i) => {
+						const ms = i * 60;
+						return rankAPICall(element.summonerId, ms);
+					});
+
+					// Await all requests
+					const res = await Promise.all(requests);
+
+					// Format output with SummonerInfo helper class
+					summoners.forEach(async (summoner, i) => {
+						if (!res[i]) {
+							await interaction.editReply('Something went wrong.');
+							return;
+						}
+						const rankedSolo = res[i][0];
+						if (!rankedSolo) {
+							output.push(new SummonerInfo(summoner.name, 'UNRANKED', 'UNRANKED', 0));
+						} else {
+							output.push(new SummonerInfo(summoner.name, rankedSolo.tier, rankedSolo.rank, rankedSolo.leaguePoints));
+						}
+					});
+					return output;
+				};
+
+				// Get the array of SummonerInfo objects (calling above function)
+				const summonersToPrint = await summonerRankLookup(summonerDatabaseEntryList);
+
+				// Sort array with custom sort function
+				summonersToPrint.sort((e1, e2) => {
+					if (tiers[e1.tier] === tiers[e2.tier]) {
+						if (divs[e1.div] === divs[e2.div]) {
+							if (e1.lp === e2.lp) {
+								return 0;
+							} else if (e1.lp > e2.lp) {
+								return -1;
+							} else {
+								return 1;
+							}
+						} else if (divs[e1.div] > divs[e2.div]) {
 							return -1;
 						} else {
 							return 1;
 						}
-					} else if (divs[e1.div] > divs[e2.div]) {
+					} else if (tiers[e1.tier] > tiers[e2.tier]) {
 						return -1;
 					} else {
 						return 1;
 					}
-				} else if (tiers[e1.tier] > tiers[e2.tier]) {
-					return -1;
-				} else {
-					return 1;
-				}
-			});
+				});
 
-			// Output string formatting
-			const output = [];
-			let count = 1;
-			let overflowCount = 0;
-			if (expandedLayout) {
-				for (const summoner of summonersToPrint) {
-					output.push((count >= 1 && count <= 3) ? `${placement[count]} ${summoner.toString()}` : `${count}. ${summoner.toString()}`);
-					count += 1;
-				}
-			} else {
-				for (const summoner of summonersToPrint) {
-					if (count <= 10) {
+				// Output string formatting
+				const output = [];
+				let count = 1;
+				let overflowCount = 0;
+				if (expandedLayout) {
+					for (const summoner of summonersToPrint) {
 						output.push((count >= 1 && count <= 3) ? `${placement[count]} ${summoner.toString()}` : `${count}. ${summoner.toString()}`);
-					} else {
-						overflowCount += 1;
+						count += 1;
 					}
-					count += 1;
+				} else {
+					for (const summoner of summonersToPrint) {
+						if (count <= 10) {
+							output.push((count >= 1 && count <= 3) ? `${placement[count]} ${summoner.toString()}` : `${count}. ${summoner.toString()}`);
+						} else {
+							overflowCount += 1;
+						}
+						count += 1;
+					}
 				}
-			}
-			let outputString = output.join('\n');
-			if (!expandedLayout && overflowCount > 0) {
-				outputString += `\n${italic(`plus ${overflowCount} more...`)}`;
-			}
 
-			const LeaderboardEmbed = new EmbedBuilder()
-				.setColor(0x03a9f4)
-				.setTitle(`${interaction.guild.name} Leaderboard`)
-				.setDescription(outputString)
-				.setTimestamp();
+				let outputString = output.join('\n');
+				if (!expandedLayout && overflowCount > 0) {
+					outputString += `\n${italic(`plus ${overflowCount} more...`)}`;
+				}
 
-			await interaction.editReply({ embeds: [LeaderboardEmbed] });
-			return;
+				const LeaderboardEmbed = new EmbedBuilder()
+					.setColor(0x03a9f4)
+					.setTitle(`${interaction.guild.name} Leaderboard`)
+					.setDescription(outputString)
+					.setTimestamp();
+
+				await interaction.editReply({ embeds: [LeaderboardEmbed] });
+				return;
+			}
 		} else if (interaction.options.getSubcommand() === 'channel') {
 			// Set channel that daily leaderboard message will appear in
 			const channelToAdd = interaction.options.getChannel('leaderboardchannel');

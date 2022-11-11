@@ -19,6 +19,10 @@ const leaderboard = mongoose.Schema({
 		type: mongoose.Schema.Types.ObjectId,
 		ref: 'summoners',
 	}],
+	pastLeaderboards: {
+		type: Map,
+		of: Array
+	}
 });
 
 const summonerSchema = mongoose.model('summoners', summoner);
