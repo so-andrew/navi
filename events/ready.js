@@ -65,12 +65,15 @@ module.exports = {
 
 		for (const guild of guilds) {
 
-			const currentDate = Date.now();
-			if (currentDate > new Date(2022, 11, 15, 3, 0, 0) && currentDate < new Date(2023, 1, 6, 19, 0, 0)) {
+			const currentDate = new Date(Date.now());
+			if (currentDate > new Date('November 15, 2022 03:00:00') && currentDate < new Date('January 6, 2023 19:00:00')) {
 				if (globals.rankedSeasonActive) {
 					await Globals.findByIdAndUpdate('636d6d10c0cc3c0c70a6bfe2', { $set: { rankedSeasonActive: false } });
+					logger.info('Ranked season has now ended.');
+				} 
+				else {
+					logger.info('Ranked season has not started yet.');
 				}
-				logger.info('Ranked season has not started yet.');
 			}
 			else {
 				// Schedule end-of-season tasks
@@ -193,25 +196,25 @@ module.exports = {
 
 				// Schedule cron job for daily leaderboard
 				cron.schedule('0 0 6 * * *', async () => {
-				// Returns the database entry if there is a set leaderboard channel
+					// Returns the database entry if there is a set leaderboard channel
 					const serverSettingsEntry = await ServerSettings.findOne({ guildId: guild.id, leaderboardChannel: { $exists: true } });
-
+	
 					if (serverSettingsEntry) {
 						const channelId = serverSettingsEntry.leaderboardChannel;
 						let channel = guild.channels.cache.get(channelId);
 						if (!channel) {
 							channel = await guild.channels.fetch(channelId);
 						}
-
+	
 						// Get Leaderboard database entry
 						const serverLeaderboard = await Leaderboard.findOne({ guildId: guild.id });
 						const summonerList = serverLeaderboard.summonerList;
-
+	
 						// Get the entries from the 'summoners' database
 						const summonerDatabaseEntryList = await Promise.all(summonerList.map((element) => {
 							return Summoner.findById(element);
 						}));
-
+	
 						// SummonerInfo helper class
 						class SummonerInfo {
 							constructor(name, tier, div, lp) {
@@ -227,7 +230,7 @@ module.exports = {
 								return `**${this.name}** (${this.tier.substr(0, 1) + this.tier.substr(1).toLowerCase()} ${this.div}, ${this.lp} LP)`;
 							}
 						}
-
+	
 						// Declare function for rate limiting api calls by introducing delay
 						const rankAPICall = (query, ms) => {
 							return new Promise((resolve, reject) => {
@@ -243,20 +246,20 @@ module.exports = {
 								});
 							});
 						};
-
+	
 						// Perform calls to Riot API here
 						const summonerRankLookup = async (summoners) => {
 							const output = [];
-
+	
 							// Format requests to Riot API (including delay amount)
 							const requests = summoners.map((element, i) => {
 								const ms = i * 60;
 								return rankAPICall(element.summonerId, ms);
 							});
-
+	
 							// Await all requests
 							const res = await Promise.all(requests);
-
+	
 							// Format output with SummonerInfo helper class
 							summoners.forEach(async (summoner, i) => {
 								if (!res[i]) {
@@ -272,10 +275,10 @@ module.exports = {
 							});
 							return output;
 						};
-
+	
 						// Get the array of SummonerInfo objects (calling above function)
 						const summonersToPrint = await summonerRankLookup(summonerDatabaseEntryList);
-
+	
 						// Sort by rank
 						summonersToPrint.sort((e1, e2) => {
 							if (tiers[e1.tier] === tiers[e2.tier]) {
@@ -298,7 +301,7 @@ module.exports = {
 								return 1;
 							}
 						});
-
+	
 						// Generate output array for printing
 						const output = [];
 						let count = 1;
@@ -315,14 +318,14 @@ module.exports = {
 						if (overflowCount > 0) {
 							outputString += `\n${italic(`plus ${overflowCount} more...`)}`;
 						}
-
+	
 						// Create embed
 						const LeaderboardEmbed = new EmbedBuilder()
 							.setColor(0x03a9f4)
 							.setTitle(`${guild.name} Leaderboard`)
 							.setDescription(outputString)
 							.setTimestamp();
-
+	
 						// Send message
 						channel.send({ embeds: [LeaderboardEmbed] });
 						logger.info(`Posting leaderboard message for ${guild.name}.`);
@@ -332,7 +335,6 @@ module.exports = {
 				});
 				logger.info(`Scheduled leaderboard cron job for ${guild.name}.`);
 			}
-			
 
 			cron.schedule('0 0 6 * * *', async () => {
 				// Get users
