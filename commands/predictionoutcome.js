@@ -54,12 +54,12 @@ module.exports = {
 					switch(outcome) {
 					case 1:
 						await Prediction.updateOne({ messageId: interaction.targetMessage.id }, { $set: { outcome: 'choice1' }});
-						await interaction.editReply(`Outcome set to ${pollDbEntry.choice1}.`);
+						await interaction.editReply({ content: `Outcome set to ${pollDbEntry.choice1}.` }, { embeds: [] });
 						await message.delete();
 						break;
 					case 2:
 						await Prediction.updateOne({ messageId: interaction.targetMessage.id }, { $set: { outcome: 'choice2' }});
-						await interaction.editReply(`Outcome set to ${pollDbEntry.choice2}.`);
+						await interaction.editReply({ content: `Outcome set to ${pollDbEntry.choice2}.` }, { embeds: [] });
 						await message.delete();
 						break;
 					default:
@@ -126,10 +126,28 @@ module.exports = {
 				if(!correctVotes.length){
 					// Refund bet points
 					await refundPoints(incorrectVotes);
+					const outcomeEmbed = new EmbedBuilder()
+						.setTitle('Final Results')
+						.setDescription(`**${updatedPollDbEntry[updatedPollDbEntry.outcome]}** wins! Unfortunately, everyone voted for the same outcome. ${updatedPollDbEntry.choice1_points + updatedPollDbEntry.choice2_points} ${currencyName}s have been refunded to the bettors.`)
+						.addFields({ name: 'Prediction Title', value: `${updatedPollDbEntry.title}` })
+						.addFields({ name: `Points for ${updatedPollDbEntry.choice1}`, value: `${updatedPollDbEntry.choice1_points}`, inline: true })
+						.addFields({ name: `Points for ${updatedPollDbEntry.choice2}`, value: `${updatedPollDbEntry.choice2_points}`, inline: true });
+
+					await interaction.channel.send({ embeds: [outcomeEmbed] });
+					return;
 				}
 				else if(!incorrectVotes.length){
 					// Refund bet points
 					await refundPoints(correctVotes);
+					const outcomeEmbed = new EmbedBuilder()
+						.setTitle('Final Results')
+						.setDescription(`**${updatedPollDbEntry[updatedPollDbEntry.outcome]}** wins! Unfortunately, everyone voted for the same outcome. ${updatedPollDbEntry.choice1_points + updatedPollDbEntry.choice2_points} ${currencyName}s have been refunded to the bettors.`)
+						.addFields({ name: 'Prediction Title', value: `${updatedPollDbEntry.title}` })
+						.addFields({ name: `Points for ${updatedPollDbEntry.choice1}`, value: `${updatedPollDbEntry.choice1_points}`, inline: true })
+						.addFields({ name: `Points for ${updatedPollDbEntry.choice2}`, value: `${updatedPollDbEntry.choice2_points}`, inline: true });
+
+					await interaction.channel.send({ embeds: [outcomeEmbed] });
+					return;
 				}
 				else{
 					// Return formula:
