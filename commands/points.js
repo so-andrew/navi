@@ -44,6 +44,7 @@ module.exports = {
 				userId: user.id,
 				userName: user.username,
 				guildId: interaction.guildId,
+				guildName: interaction.guild.name,
 				points: 1000,
 			};
 			const res = await Points.insertMany(newPoints);

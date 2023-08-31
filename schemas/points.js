@@ -4,6 +4,7 @@ const points = mongoose.Schema({
 	userId: String,
 	userName: String,
 	guildId: String,
+	guildName: String,
 	points: Number,
 });
 
