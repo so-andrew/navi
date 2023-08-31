@@ -80,6 +80,7 @@ module.exports = {
 						.addFields({ name: `Points for ${updatedPollDbEntry.choice2}`, value: `${updatedPollDbEntry.choice2_points}`, inline: true });
 
 					await interaction.channel.send({ embeds: [outcomeEmbed] });
+					await interaction.editReply('No one voted on this prediction.');
 					return;
 				}
 				

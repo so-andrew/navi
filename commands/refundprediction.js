@@ -47,6 +47,7 @@ module.exports = {
 				.addFields({ name: `Points for ${updatedPollDbEntry.choice2}`, value: `${updatedPollDbEntry.choice2_points}`, inline: true });
 
 			await interaction.channel.send({ embeds: [outcomeEmbed] });
+			await interaction.editReply('No one voted on this prediction.');
 			return;
 		}
 
@@ -68,7 +69,7 @@ module.exports = {
 					.setDescription(`You have been refunded **${payout}** points.\n You now have **${newPoints}** ${currencyName}s.`)
 					.setAuthor({ name: user.username, iconURL: user.displayAvatarURL() })
 					.addFields({ name: 'Prediction Title', value: `${updatedPollDbEntry.title}` })
-					.addFields({ name: 'Outcome', value: `${updatedPollDbEntry[updatedPollDbEntry.outcome]}` })
+					.addFields({ name: 'Outcome', value: 'Refunded' })
 					.setTimestamp();
 
 				await user.send({ embeds: [pointsEmbed] });
@@ -90,6 +91,7 @@ module.exports = {
 			.addFields({ name: `Points for ${updatedPollDbEntry.choice2}`, value: `${updatedPollDbEntry.choice2_points}`, inline: true });
 
 		await interaction.channel.send({ embeds: [outcomeEmbed] });
+		await interaction.editReply('Prediction refunded.');
 		return;
 	}
 };
