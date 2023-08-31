@@ -1,5 +1,5 @@
-const { ContextMenuCommandBuilder, ApplicationCommandType, PermissionFlagsBits, EmbedBuilder } = require('discord.js');
-const logger = require('../logger.js');
+const { ContextMenuCommandBuilder, ApplicationCommandType, PermissionFlagsBits, EmbedBuilder, Embed } = require('discord.js');
+const logger = require('../logger');
 const { Points } = require('../schemas/points.js');
 const { Prediction } = require('../schemas/predictionschema.js');
 const { ServerSettings } = require('../schemas/serversettings.js');
@@ -34,7 +34,15 @@ module.exports = {
 		}
 
 		const filter = m => m.author.id === interaction.user.id;
-		await interaction.editReply({ content: 'Type `1` or `2` within 30 seconds to set the outcome of the prediction.'});
+
+		const setPredictionOutcomeEmbed = new EmbedBuilder()
+			.setTitle('Set Outcome')
+			.setDescription('Type `1` or `2` within 30 seconds to set the outcome of the prediction.')
+			.addFields({ name: 'Choice 1', value: `${pollDbEntry.choice1}`, inline: true })
+			.addFields({ name: 'Choice 2', value: `${pollDbEntry.choice2}`, inline: true });
+		
+
+		await interaction.editReply({ embeds: [setPredictionOutcomeEmbed] });
 		interaction.channel.awaitMessages({ filter, max: 1, time: 30_000, errors: ['time'] })
 			.then(async collected => {
 				for(const message of collected.values()) {
@@ -46,12 +54,12 @@ module.exports = {
 					switch(outcome) {
 					case 1:
 						await Prediction.updateOne({ messageId: interaction.targetMessage.id }, { $set: { outcome: 'choice1' }});
-						await interaction.editReply(`Outcome set to ${pollDbEntry.choice1}.`);
+						await interaction.editReply({ content: `Outcome set to ${pollDbEntry.choice1}.` }, { embeds: [] });
 						await message.delete();
 						break;
 					case 2:
 						await Prediction.updateOne({ messageId: interaction.targetMessage.id }, { $set: { outcome: 'choice2' }});
-						await interaction.editReply(`Outcome set to ${pollDbEntry.choice2}.`);
+						await interaction.editReply({ content: `Outcome set to ${pollDbEntry.choice2}.` }, { embeds: [] });
 						await message.delete();
 						break;
 					default:
@@ -72,44 +80,26 @@ module.exports = {
 						.addFields({ name: `Points for ${updatedPollDbEntry.choice2}`, value: `${updatedPollDbEntry.choice2_points}`, inline: true });
 
 					await interaction.channel.send({ embeds: [outcomeEmbed] });
+					await interaction.editReply('No one voted on this prediction.');
 					return;
 				}
 				
-				// Filter users who voted correctly
+				// Filter users who voted correctly and incorrectly
 				const pollVotes = updatedPollDbEntry.users.entries();
+				const pollVotesArray = Array.from(pollVotes);
 				const correctVotes = Array.from(pollVotes).filter(([key, value]) => {
 					return value.choice === updatedPollDbEntry.outcome;
 				});
+				const incorrectVotes = Array.from(pollVotes).filter(([key, value]) => {
+					return value.choice !== updatedPollDbEntry.outcome;
+				});
 
-
-				// Return formula:
-				// Winner gets: (WinTotalPoints+LoseTotalPoints) * (WinnerBetPoints/WinTotalPoints)
-
-				const updatePoints = async (votes) => {
+				// This is the refund function if only one outcome is selected
+				const refundPoints = async (votes) => {
 					const requests = votes.map(async (vote) => {
-						let payout;
-						logger.debug(`Current user: ${vote[0]}`);
-						if (updatedPollDbEntry.outcome === 'choice1') {
-							logger.debug('choice1_points: ', updatedPollDbEntry.choice1_points);
-							logger.debug('choice2_points: ', updatedPollDbEntry.choice2_points);
-							logger.debug('winnerBetPoints: ', vote[1].points);
-							logger.debug('percentage: ', vote[1].points/updatedPollDbEntry.choice1_points);
-							logger.debug('percentage floor: ', Math.floor(vote[1].points/updatedPollDbEntry.choice1_points));
 
-							payout = Math.floor((updatedPollDbEntry.choice1_points + updatedPollDbEntry.choice2_points) * (vote[1].points/updatedPollDbEntry.choice1_points))
-						} else {
-							logger.debug('choice1_points: ', updatedPollDbEntry.choice1_points);
-							logger.debug('choice2_points: ', updatedPollDbEntry.choice2_points);
-							logger.debug('winnerBetPoints: ', vote[1].points);
-							logger.debug('percentage: ', vote[1].points/updatedPollDbEntry.choice2_points);
-							logger.debug('percentage floor: ', Math.floor(vote[1].points/updatedPollDbEntry.choice2_points));
-
-							payout = Math.floor((updatedPollDbEntry.choice1_points + updatedPollDbEntry.choice2_points) * (vote[1].points/updatedPollDbEntry.choice2_points));
-						}
-
-						// const payout = updatedPollDbEntry.outcome === 'choice1' ? (updatedPollDbEntry.choice1_points + updatedPollDbEntry.choice2_points) * (Math.floor(vote[1].points/updatedPollDbEntry.choice1_points)) : (updatedPollDbEntry.choice1_points + updatedPollDbEntry.choice2_points) * (Math.floor(vote[1].points/updatedPollDbEntry.choice2_points));
-						logger.info(`Payout for ${vote[0]}: ${payout}`);
-
+						let payout = vote[1].points;
+						console.log(`vote[0] = ${vote[0]}, payout = ${payout}`);
 						let member = interaction.guild.members.cache.get(vote[0]);
 						if (!member) {
 							member = interaction.guild.members.fetch(vote[0]);
@@ -121,58 +111,126 @@ module.exports = {
 
 						const pointsEmbed = new EmbedBuilder()
 							.setColor(0x03a9f4)
-							.setDescription(`Congratulations, you have earned **${payout}** ${currencyName}s!\n You now have **${newPoints}** ${currencyName}s.`)
+							.setDescription(`You have been refunded **${payout}** points.\n You now have **${newPoints}** ${currencyName}s.`)
 							.setAuthor({ name: user.username, iconURL: user.displayAvatarURL() })
-							.addFields({ name: 'Prediction Title', value: `${updatedPollDbEntry.title}`})
+							.addFields({ name: 'Prediction Title', value: `${updatedPollDbEntry.title}` })
 							.addFields({ name: 'Outcome', value: `${updatedPollDbEntry[updatedPollDbEntry.outcome]}` })
 							.setTimestamp();
 
 						await user.send({ embeds: [pointsEmbed] });
-						return Points.updateOne({ guildId: interaction.guildId, userId: vote[0] }, { $inc: { points: payout }});
+						return Points.updateOne({ guildId: interaction.guildId, userId: vote[0] }, { $inc: { points: payout } });
 					});
 
 					await Promise.all(requests);
 				};
-				await updatePoints(correctVotes);
 
-				// Send message to losers
-				const pollVotes2 = updatedPollDbEntry.users.entries();
-				const incorrectVotes = Array.from(pollVotes2).filter(([key, value]) => {
-					return value.choice !== updatedPollDbEntry.outcome;
-				});
+				// Check if one group is empty, i.e. only one outcome was selected
+				if(!correctVotes.length || !incorrectVotes.length){
+					// Refund bet points
+					await refundPoints(pollVotesArray);
+					const outcomeEmbed = new EmbedBuilder()
+						.setTitle('Final Results')
+						.setDescription(`**${updatedPollDbEntry[updatedPollDbEntry.outcome]}** wins! Unfortunately, everyone voted for the same outcome. ${updatedPollDbEntry.choice1_points + updatedPollDbEntry.choice2_points} ${currencyName}s have been refunded to the bettors.`)
+						.addFields({ name: 'Prediction Title', value: `${updatedPollDbEntry.title}` })
+						.addFields({ name: `Points for ${updatedPollDbEntry.choice1}`, value: `${updatedPollDbEntry.choice1_points}`, inline: true })
+						.addFields({ name: `Points for ${updatedPollDbEntry.choice2}`, value: `${updatedPollDbEntry.choice2_points}`, inline: true });
 
-				const sendConsolationMessages = async (votes) => {
-					const requests = votes.map(async (vote) => {
-						let member = interaction.guild.members.cache.get(vote[0]);
-						if (!member) {
-							member = interaction.guild.members.fetch(vote[0]);
-						}
-						const user = member.user;
+					await interaction.channel.send({ embeds: [outcomeEmbed] });
+				}
+				else{
+					// Return formula:
+					// Winner gets: (WinTotalPoints+LoseTotalPoints) * (WinnerBetPoints/WinTotalPoints)
 
-						const pointsEmbed = new EmbedBuilder()
-							.setColor(0x03a9f4)
-							.setDescription('Sorry, you did not predict correctly. Better luck next time!')
-							.setAuthor({ name: user.username, iconURL: user.displayAvatarURL() })
-							.addFields({ name: 'Prediction Title', value: `${updatedPollDbEntry.title}`})
-							.addFields({ name: 'Outcome', value: `${updatedPollDbEntry[updatedPollDbEntry.outcome]}` })
-							.setTimestamp();
+					const updatePoints = async (votes) => {
+						const requests = votes.map(async (vote) => {
+							let payout;
+							logger.debug(`Current user: ${vote[0]}`);
+							if (updatedPollDbEntry.outcome === 'choice1') {
+								logger.debug('choice1_points: ', updatedPollDbEntry.choice1_points);
+								logger.debug('choice2_points: ', updatedPollDbEntry.choice2_points);
+								logger.debug('winnerBetPoints: ', vote[1].points);
+								logger.debug('percentage: ', vote[1].points / updatedPollDbEntry.choice1_points);
+								logger.debug('percentage floor: ', Math.floor(vote[1].points / updatedPollDbEntry.choice1_points));
 
-						return user.send({ embeds: [pointsEmbed] });
-					});
+								payout = Math.floor((updatedPollDbEntry.choice1_points + updatedPollDbEntry.choice2_points) * (vote[1].points / updatedPollDbEntry.choice1_points));
+							} else {
+								logger.debug('choice1_points: ', updatedPollDbEntry.choice1_points);
+								logger.debug('choice2_points: ', updatedPollDbEntry.choice2_points);
+								logger.debug('winnerBetPoints: ', vote[1].points);
+								logger.debug('percentage: ', vote[1].points / updatedPollDbEntry.choice2_points);
+								logger.debug('percentage floor: ', Math.floor(vote[1].points / updatedPollDbEntry.choice2_points));
 
-					await Promise.all(requests);
-				};
-				await sendConsolationMessages(incorrectVotes);
+								payout = Math.floor((updatedPollDbEntry.choice1_points + updatedPollDbEntry.choice2_points) * (vote[1].points / updatedPollDbEntry.choice2_points));
+							}
 
-				const outcomeEmbed = new EmbedBuilder()
-					.setTitle('Final Results')
-					.setDescription(`**${updatedPollDbEntry[updatedPollDbEntry.outcome]}** wins! ${updatedPollDbEntry.choice1_points + updatedPollDbEntry.choice2_points} ${currencyName}s have been distributed to the winners.`)
-					.addFields({ name: 'Prediction Title', value: `${updatedPollDbEntry.title}`})
-					.addFields({ name: `Points for ${updatedPollDbEntry.choice1}`, value: `${updatedPollDbEntry.choice1_points}`, inline: true })
-					.addFields({ name: `Points for ${updatedPollDbEntry.choice2}`, value: `${updatedPollDbEntry.choice2_points}`, inline: true });
+							// const payout = updatedPollDbEntry.outcome === 'choice1' ? (updatedPollDbEntry.choice1_points + updatedPollDbEntry.choice2_points) * (Math.floor(vote[1].points/updatedPollDbEntry.choice1_points)) : (updatedPollDbEntry.choice1_points + updatedPollDbEntry.choice2_points) * (Math.floor(vote[1].points/updatedPollDbEntry.choice2_points));
+							logger.info(`Payout for ${vote[0]}: ${payout}`);
 
-				await interaction.channel.send({ embeds: [outcomeEmbed] });
-				return;
+							let member = interaction.guild.members.cache.get(vote[0]);
+							if (!member) {
+								member = interaction.guild.members.fetch(vote[0]);
+							}
+							const user = member.user;
+
+							const userPointsDBEntry = await Points.findOne({ guildId: interaction.guildId, userId: vote[0] });
+							const newPoints = userPointsDBEntry.points + payout;
+
+							const pointsEmbed = new EmbedBuilder()
+								.setColor(0x03a9f4)
+								.setDescription(`Congratulations, you have earned **${payout}** ${currencyName}s!\n You now have **${newPoints}** ${currencyName}s.`)
+								.setAuthor({ name: user.username, iconURL: user.displayAvatarURL() })
+								.addFields({ name: 'Prediction Title', value: `${updatedPollDbEntry.title}` })
+								.addFields({ name: 'Outcome', value: `${updatedPollDbEntry[updatedPollDbEntry.outcome]}` })
+								.setTimestamp();
+
+							await user.send({ embeds: [pointsEmbed] });
+							return Points.updateOne({ guildId: interaction.guildId, userId: vote[0] }, { $inc: { points: payout } });
+						});
+
+						await Promise.all(requests);
+					};
+					await updatePoints(correctVotes);
+
+					// Send message to losers
+					
+					//const pollVotes2 = updatedPollDbEntry.users.entries();
+					//const incorrectVotes = Array.from(pollVotes2).filter(([key, value]) => {
+					//	  return value.choice !== updatedPollDbEntry.outcome;
+					//});
+
+					const sendConsolationMessages = async (votes) => {
+						const requests = votes.map(async (vote) => {
+							let member = interaction.guild.members.cache.get(vote[0]);
+							if (!member) {
+								member = interaction.guild.members.fetch(vote[0]);
+							}
+							const user = member.user;
+
+							const pointsEmbed = new EmbedBuilder()
+								.setColor(0x03a9f4)
+								.setDescription('Sorry, you did not predict correctly. Better luck next time!')
+								.setAuthor({ name: user.username, iconURL: user.displayAvatarURL() })
+								.addFields({ name: 'Prediction Title', value: `${updatedPollDbEntry.title}` })
+								.addFields({ name: 'Outcome', value: `${updatedPollDbEntry[updatedPollDbEntry.outcome]}` })
+								.setTimestamp();
+
+							return user.send({ embeds: [pointsEmbed] });
+						});
+
+						await Promise.all(requests);
+					};
+					await sendConsolationMessages(incorrectVotes);
+
+					const outcomeEmbed = new EmbedBuilder()
+						.setTitle('Final Results')
+						.setDescription(`**${updatedPollDbEntry[updatedPollDbEntry.outcome]}** wins! ${updatedPollDbEntry.choice1_points + updatedPollDbEntry.choice2_points} ${currencyName}s have been distributed to the winners.`)
+						.addFields({ name: 'Prediction Title', value: `${updatedPollDbEntry.title}` })
+						.addFields({ name: `Points for ${updatedPollDbEntry.choice1}`, value: `${updatedPollDbEntry.choice1_points}`, inline: true })
+						.addFields({ name: `Points for ${updatedPollDbEntry.choice2}`, value: `${updatedPollDbEntry.choice2_points}`, inline: true });
+
+					await interaction.channel.send({ embeds: [outcomeEmbed] });
+					return;
+				}
 
 			})
 			.catch(async collected => {
