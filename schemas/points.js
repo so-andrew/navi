@@ -2,6 +2,7 @@ const mongoose = require('mongoose');
 
 const points = mongoose.Schema({
 	userId: String,
+	userName: String,
 	guildId: String,
 	points: Number,
 });

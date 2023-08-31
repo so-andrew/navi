@@ -4,6 +4,7 @@ const { Types: { Long } } = mongoose;
 
 const prediction = mongoose.Schema({
 	guildId: String,
+	guildName: String,
 	messageId: String,
 	title: String,
 	choice1: String,

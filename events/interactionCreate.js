@@ -73,6 +73,7 @@ module.exports = {
 				const pollMessage = await interaction.channel.send({ content: 'Creating poll, one moment...' });
 				const poll = {
 					guildId: interaction.guildId,
+					guildName: interaction.guild.name,
 					messageId: pollMessage.id,
 					title: interaction.fields.getTextInputValue('pollTitleInput'),
 					choice1: interaction.fields.getTextInputValue('pollChoice1Input'),

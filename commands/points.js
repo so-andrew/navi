@@ -42,6 +42,7 @@ module.exports = {
 			console.log('Creating new database entry...');
 			const newPoints = {
 				userId: user.id,
+				userName: user.username,
 				guildId: interaction.guildId,
 				points: 1000,
 			};
