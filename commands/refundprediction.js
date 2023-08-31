@@ -79,7 +79,8 @@ module.exports = {
 		};
 		
 		const pollVotes = updatedPollDbEntry.users.entries();
-		await refundPoints(pollVotes);
+		let pollVotesArray = Array.from(pollVotes);
+		await refundPoints(pollVotesArray);
 
 		const outcomeEmbed = new EmbedBuilder()
 			.setTitle('Prediction Refunded')
