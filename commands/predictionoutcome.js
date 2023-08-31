@@ -1,5 +1,5 @@
 const { ContextMenuCommandBuilder, ApplicationCommandType, PermissionFlagsBits, EmbedBuilder, Embed } = require('discord.js');
-const logger = require('../logger.js');
+const logger = require('../logger');
 const { Points } = require('../schemas/points.js');
 const { Prediction } = require('../schemas/predictionschema.js');
 const { ServerSettings } = require('../schemas/serversettings.js');
@@ -86,6 +86,7 @@ module.exports = {
 				
 				// Filter users who voted correctly and incorrectly
 				const pollVotes = updatedPollDbEntry.users.entries();
+				const pollVotesArray = Array.from(pollVotes);
 				const correctVotes = Array.from(pollVotes).filter(([key, value]) => {
 					return value.choice === updatedPollDbEntry.outcome;
 				});
@@ -98,7 +99,7 @@ module.exports = {
 					const requests = votes.map(async (vote) => {
 
 						let payout = vote[1].points;
-						logger.info(vote[0], payout);
+						console.log(`vote[0] = ${vote[0]}, payout = ${payout}`);
 						let member = interaction.guild.members.cache.get(vote[0]);
 						if (!member) {
 							member = interaction.guild.members.fetch(vote[0]);
@@ -124,9 +125,9 @@ module.exports = {
 				};
 
 				// Check if one group is empty, i.e. only one outcome was selected
-				if(!correctVotes.length){
+				if(!correctVotes.length || !incorrectVotes.length){
 					// Refund bet points
-					await refundPoints(incorrectVotes);
+					await refundPoints(pollVotesArray);
 					const outcomeEmbed = new EmbedBuilder()
 						.setTitle('Final Results')
 						.setDescription(`**${updatedPollDbEntry[updatedPollDbEntry.outcome]}** wins! Unfortunately, everyone voted for the same outcome. ${updatedPollDbEntry.choice1_points + updatedPollDbEntry.choice2_points} ${currencyName}s have been refunded to the bettors.`)
@@ -135,20 +136,6 @@ module.exports = {
 						.addFields({ name: `Points for ${updatedPollDbEntry.choice2}`, value: `${updatedPollDbEntry.choice2_points}`, inline: true });
 
 					await interaction.channel.send({ embeds: [outcomeEmbed] });
-					return;
-				}
-				else if(!incorrectVotes.length){
-					// Refund bet points
-					await refundPoints(correctVotes);
-					const outcomeEmbed = new EmbedBuilder()
-						.setTitle('Final Results')
-						.setDescription(`**${updatedPollDbEntry[updatedPollDbEntry.outcome]}** wins! Unfortunately, everyone voted for the same outcome. ${updatedPollDbEntry.choice1_points + updatedPollDbEntry.choice2_points} ${currencyName}s have been refunded to the bettors.`)
-						.addFields({ name: 'Prediction Title', value: `${updatedPollDbEntry.title}` })
-						.addFields({ name: `Points for ${updatedPollDbEntry.choice1}`, value: `${updatedPollDbEntry.choice1_points}`, inline: true })
-						.addFields({ name: `Points for ${updatedPollDbEntry.choice2}`, value: `${updatedPollDbEntry.choice2_points}`, inline: true });
-
-					await interaction.channel.send({ embeds: [outcomeEmbed] });
-					return;
 				}
 				else{
 					// Return formula:
@@ -165,7 +152,7 @@ module.exports = {
 								logger.debug('percentage: ', vote[1].points / updatedPollDbEntry.choice1_points);
 								logger.debug('percentage floor: ', Math.floor(vote[1].points / updatedPollDbEntry.choice1_points));
 
-								payout = Math.floor((updatedPollDbEntry.choice1_points + updatedPollDbEntry.choice2_points) * (vote[1].points / updatedPollDbEntry.choice1_points))
+								payout = Math.floor((updatedPollDbEntry.choice1_points + updatedPollDbEntry.choice2_points) * (vote[1].points / updatedPollDbEntry.choice1_points));
 							} else {
 								logger.debug('choice1_points: ', updatedPollDbEntry.choice1_points);
 								logger.debug('choice2_points: ', updatedPollDbEntry.choice2_points);

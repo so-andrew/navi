@@ -55,7 +55,6 @@ module.exports = {
 			const requests = votes.map(async (vote) => {
 
 				let payout = vote[1].points;
-				logger.info(vote[0], payout);
 				let member = interaction.guild.members.cache.get(vote[0]);
 				if (!member) {
 					member = interaction.guild.members.fetch(vote[0]);
